@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snapchat Photo Merger</title>
+    <title>Advanced Snapchat Media Merger</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -43,87 +44,241 @@
             border-radius: 20px;
             padding: 30px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            max-width: 800px;
+            max-width: 1200px;
             width: 100%;
         }
 
-        .merger-container {
-            position: relative;
-            width: 100%;
-            max-width: 600px;
-            margin: 0 auto;
+        .upload-section {
+            margin-bottom: 30px;
+        }
+
+        .drop-zone {
+            border: 3px dashed #ddd;
             border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            padding: 40px;
+            text-align: center;
+            background: #f9f9f9;
+            transition: all 0.3s ease;
+            cursor: pointer;
         }
 
-        .base-image {
-            width: 100%;
-            height: auto;
-            display: block;
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #667eea;
+            background: #f0f4ff;
         }
 
-        .filter-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            mix-blend-mode: normal;
+        .drop-zone.dragover {
+            border-color: #4CAF50;
+            background: #e8f5e8;
+        }
+
+        .drop-zone-content {
             pointer-events: none;
         }
 
-        .controls {
-            margin-top: 30px;
-            text-align: center;
-        }
-
-        .file-input-group {
-            margin: 20px 0;
-            padding: 20px;
-            border: 2px dashed #ddd;
-            border-radius: 10px;
-            background: #f9f9f9;
-        }
-
-        .file-input-group label {
-            display: block;
-            font-weight: 600;
-            color: #333;
+        .drop-zone h3 {
             margin-bottom: 10px;
+            color: #333;
+        }
+
+        .drop-zone p {
+            color: #666;
+            margin-bottom: 15px;
         }
 
         .file-input {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background: white;
+            display: none;
         }
 
-        .download-btn {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+        .file-info {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .file-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .file-item {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .file-item .file-type {
+            font-weight: bold;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            margin-bottom: 10px;
+        }
+
+        .file-type.main {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .file-type.overlay {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .file-type.unknown {
+            background: #f5f5f5;
+            color: #666;
+        }
+
+        .progress-container {
+            margin: 30px 0;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: 600;
+        }
+
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .result-item {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .result-preview {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .result-info h4 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .result-info p {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 12px 24px;
             border: none;
-            padding: 15px 30px;
             border-radius: 25px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-top: 20px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .download-btn:hover {
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-        .download-btn:active {
-            transform: translateY(0);
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .status-processing {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .status-completed {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .status-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .video-controls {
+            margin-top: 10px;
+        }
+
+        .video-controls input {
+            width: 100%;
+            margin: 5px 0;
         }
 
         @media (max-width: 768px) {
@@ -135,137 +290,533 @@
                 padding: 20px;
                 margin: 10px;
             }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .sample-text {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-style: italic;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading {
+            animation: spin 1s linear infinite;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>📸 Snapchat Photo Merger</h1>
-        <p>Merge your Snapchat filter with your photos</p>
+        <h1>🎬 Advanced Snapchat Media Merger</h1>
+        <p>Batch process photos and videos with overlays • Auto-detect main/overlay files • Download as ZIP</p>
     </div>
 
     <div class="container">
-        <div class="merger-container" id="mergerContainer">
-            <img id="baseImage" class="base-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f0f0f0'/%3E%3Ctext x='200' y='150' font-family='Arial' font-size='16' text-anchor='middle' fill='%23999'%3EUpload your base image%3C/text%3E%3C/svg%3E" alt="Base Image">
-            <div id="filterOverlay" class="filter-overlay"></div>
+        <!-- Upload Section -->
+        <div class="upload-section">
+            <div class="drop-zone" id="dropZone">
+                <div class="drop-zone-content">
+                    <h3>📁 Drop Files Here or Click to Select</h3>
+                    <p>Support: Images (JPG, PNG, WebP) and Videos (MP4)<br>
+                       Automatically detects main files and overlay files based on filenames</p>
+                    <input type="file" id="fileInput" class="file-input" multiple accept="image/*,video/mp4">
+                </div>
+            </div>
+            
+            <div class="file-info" id="fileInfo">
+                <h4>📋 Detected Files:</h4>
+                <div class="file-list" id="fileList"></div>
+            </div>
         </div>
 
-        <div class="controls">
-            <div class="file-input-group">
-                <label for="baseImageInput">📷 Base Image (Photo/Video screenshot)</label>
-                <input type="file" id="baseImageInput" class="file-input" accept="image/*">
+        <!-- Progress Section -->
+        <div class="progress-container" id="progressContainer">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill"></div>
             </div>
-
-            <div class="file-input-group">
-                <label for="filterInput">🎨 Filter/Overlay Image</label>
-                <input type="file" id="filterInput" class="file-input" accept="image/*">
-            </div>
-
-            <button class="download-btn" id="downloadBtn">💾 Download Merged Image</button>
+            <div class="progress-text" id="progressText">Processing files...</div>
         </div>
 
-        <p class="sample-text">The provided Snapchat images will be loaded automatically</p>
+        <!-- Action Buttons -->
+        <div class="action-buttons" id="actionButtons" style="display: none;">
+            <button class="btn btn-primary" id="processBtn">
+                🚀 Process All Files
+            </button>
+            <button class="btn btn-secondary" id="clearBtn">
+                🗑️ Clear All
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="results-section" id="resultsSection">
+            <h3>📋 Processing Results</h3>
+            <div class="results-grid" id="resultsGrid"></div>
+            
+            <div class="action-buttons">
+                <button class="btn btn-success" id="downloadZipBtn">
+                    📦 Download All as ZIP
+                </button>
+                <button class="btn btn-secondary" id="downloadIndividualBtn">
+                    📥 Download Individual Files
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
+        // Global variables
+        let uploadedFiles = [];
+        let processedResults = [];
+        let workers = [];
+        const MAX_WORKERS = navigator.hardwareConcurrency || 4;
+
         // DOM elements
-        const baseImage = document.getElementById('baseImage');
-        const filterOverlay = document.getElementById('filterOverlay');
-        const baseImageInput = document.getElementById('baseImageInput');
-        const filterInput = document.getElementById('filterInput');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const mergerContainer = document.getElementById('mergerContainer');
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileList = document.getElementById('fileList');
+        const actionButtons = document.getElementById('actionButtons');
+        const processBtn = document.getElementById('processBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressFill = document.getElementById('progressFill');
+        const progressText = document.getElementById('progressText');
+        const resultsSection = document.getElementById('resultsSection');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const downloadZipBtn = document.getElementById('downloadZipBtn');
+        const downloadIndividualBtn = document.getElementById('downloadIndividualBtn');
 
-        // File input handlers
-        baseImageInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    baseImage.src = e.target.result;
-                };
-                reader.readAsDataURL(file);
+        // File type detection based on filename patterns
+        function detectFileType(filename) {
+            const name = filename.toLowerCase();
+            
+            // Common overlay/filter patterns
+            const overlayPatterns = [
+                'overlay', 'filter', 'sticker', 'text', 'caption',
+                'watermark', 'logo', 'badge', 'stamp', 'label'
+            ];
+            
+            // Check if filename contains overlay indicators
+            for (const pattern of overlayPatterns) {
+                if (name.includes(pattern)) {
+                    return 'overlay';
+                }
             }
+            
+            // Common main file patterns
+            const mainPatterns = [
+                'main', 'base', 'original', 'photo', 'image', 
+                'video', 'snap', 'shot', 'pic'
+            ];
+            
+            for (const pattern of mainPatterns) {
+                if (name.includes(pattern)) {
+                    return 'main';
+                }
+            }
+            
+            // Fallback: assume it's main content if no overlay indicators
+            return 'main';
+        }
+
+        // File upload handlers
+        dropZone.addEventListener('click', () => fileInput.click());
+        
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            handleFileUpload(files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFileUpload(files);
         });
 
-        filterInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
+        // Handle file uploads
+        function handleFileUpload(files) {
+            uploadedFiles = [];
+            
+            files.forEach(file => {
+                const fileType = detectFileType(file.name);
+                const isVideo = file.type.startsWith('video/');
+                const isImage = file.type.startsWith('image/');
+                
+                if (isVideo || isImage) {
+                    uploadedFiles.push({
+                        file: file,
+                        name: file.name,
+                        type: fileType,
+                        mediaType: isVideo ? 'video' : 'image',
+                        size: file.size,
+                        id: Date.now() + Math.random()
+                    });
+                }
+            });
+            
+            displayUploadedFiles();
+        }
+
+        // Display uploaded files
+        function displayUploadedFiles() {
+            if (uploadedFiles.length === 0) {
+                fileInfo.style.display = 'none';
+                actionButtons.style.display = 'none';
+                return;
+            }
+            
+            fileInfo.style.display = 'block';
+            actionButtons.style.display = 'flex';
+            
+            fileList.innerHTML = '';
+            
+            uploadedFiles.forEach(fileData => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                fileItem.innerHTML = `
+                    <div class="file-type ${fileData.type}">${fileData.type.toUpperCase()}</div>
+                    <strong>${fileData.name}</strong>
+                    <p>${fileData.mediaType.toUpperCase()} • ${(fileData.size / (1024 * 1024)).toFixed(2)} MB</p>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        // Process files with multiprocessing
+        async function processFiles() {
+            if (uploadedFiles.length === 0) return;
+            
+            processBtn.disabled = true;
+            progressContainer.style.display = 'block';
+            processedResults = [];
+            
+            // Group files by main and overlays
+            const mainFiles = uploadedFiles.filter(f => f.type === 'main');
+            const overlayFiles = uploadedFiles.filter(f => f.type === 'overlay');
+            
+            // If no overlay files, process main files as-is
+            if (overlayFiles.length === 0) {
+                for (let i = 0; i < mainFiles.length; i++) {
+                    const progress = ((i + 1) / mainFiles.length) * 100;
+                    updateProgress(progress, `Processing ${mainFiles[i].name} (${i + 1}/${mainFiles.length})`);
+                    
+                    const result = await processFileWithoutOverlay(mainFiles[i]);
+                    processedResults.push(result);
+                }
+            } else {
+                // Process with overlays
+                let totalTasks = mainFiles.length * overlayFiles.length;
+                let completedTasks = 0;
+                
+                // Process in batches using Web Workers simulation
+                const batches = [];
+                for (const mainFile of mainFiles) {
+                    for (const overlayFile of overlayFiles) {
+                        batches.push({ main: mainFile, overlay: overlayFile });
+                    }
+                }
+                
+                // Process batches in parallel
+                const batchPromises = [];
+                const batchSize = Math.ceil(batches.length / MAX_WORKERS);
+                
+                for (let i = 0; i < batches.length; i += batchSize) {
+                    const batch = batches.slice(i, i + batchSize);
+                    batchPromises.push(processBatch(batch, i / batchSize + 1));
+                }
+                
+                const batchResults = await Promise.all(batchPromises);
+                processedResults = batchResults.flat();
+            }
+            
+            progressContainer.style.display = 'none';
+            processBtn.disabled = false;
+            displayResults();
+        }
+
+        // Process batch of files
+        async function processBatch(batch, batchNumber) {
+            const results = [];
+            
+            for (let i = 0; i < batch.length; i++) {
+                const { main, overlay } = batch[i];
+                const progress = ((i + 1) / batch.length) * 100;
+                
+                updateProgress(progress, `Batch ${batchNumber}: Processing ${main.name} with ${overlay.name}`);
+                
+                try {
+                    const result = await mergeFiles(main, overlay);
+                    results.push(result);
+                } catch (error) {
+                    console.error('Error processing files:', error);
+                    results.push({
+                        name: `${main.name}_${overlay.name}`,
+                        status: 'error',
+                        error: error.message
+                    });
+                }
+                
+                // Small delay to prevent browser freezing
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            return results;
+        }
+
+        // Process file without overlay (original file)
+        async function processFileWithoutOverlay(fileData) {
+            return new Promise((resolve) => {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    filterOverlay.style.backgroundImage = `url(${e.target.result})`;
+                    resolve({
+                        name: fileData.name,
+                        originalName: fileData.name,
+                        data: e.target.result,
+                        type: fileData.mediaType,
+                        status: 'completed',
+                        isOriginal: true
+                    });
                 };
-                reader.readAsDataURL(file);
-            }
-        });
+                reader.readAsDataURL(fileData.file);
+            });
+        }
 
-        // Download functionality
-        downloadBtn.addEventListener('click', function() {
-            // Create canvas for merging
+        // Merge main file with overlay
+        async function mergeFiles(mainFile, overlayFile) {
+            return new Promise((resolve, reject) => {
+                if (mainFile.mediaType === 'video') {
+                    mergeVideoWithOverlay(mainFile, overlayFile, resolve, reject);
+                } else {
+                    mergeImageWithOverlay(mainFile, overlayFile, resolve, reject);
+                }
+            });
+        }
+
+        // Merge image with overlay
+        function mergeImageWithOverlay(mainFile, overlayFile, resolve, reject) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Set canvas size to match the base image
-            const img = new Image();
-            img.onload = function() {
-                canvas.width = img.width;
-                canvas.height = img.height;
-                
-                // Draw base image
-                ctx.drawImage(img, 0, 0);
-                
-                // Draw filter overlay if exists
-                const filterBg = filterOverlay.style.backgroundImage;
-                if (filterBg && filterBg !== 'none') {
-                    const filterImg = new Image();
-                    filterImg.onload = function() {
-                        ctx.drawImage(filterImg, 0, 0, canvas.width, canvas.height);
-                        downloadCanvas();
-                    };
-                    filterImg.src = filterBg.slice(5, -2); // Remove url(" and ")
-                } else {
-                    downloadCanvas();
-                }
-            };
-            img.src = baseImage.src;
+            const mainImg = new Image();
+            const overlayImg = new Image();
             
-            function downloadCanvas() {
-                // Create download link
-                const link = document.createElement('a');
-                link.download = 'snapchat-merged-photo.png';
-                link.href = canvas.toDataURL();
-                link.click();
-            }
-        });
-
-        // Auto-load the provided Snapchat images if they exist
-        window.addEventListener('load', function() {
-            // Check if demo images exist and load them
-            loadImageIfExists('assets/space-needle.jpg', baseImage);
-            loadImageIfExists('assets/seattle-filter.png', filterOverlay, true);
-        });
-
-        function loadImageIfExists(src, element, isFilter = false) {
-            const img = new Image();
-            img.onload = function() {
-                if (isFilter) {
-                    element.style.backgroundImage = `url(${src})`;
-                } else {
-                    element.src = src;
+            let loadedCount = 0;
+            
+            function checkBothLoaded() {
+                loadedCount++;
+                if (loadedCount === 2) {
+                    // Set canvas size to main image
+                    canvas.width = mainImg.width;
+                    canvas.height = mainImg.height;
+                    
+                    // Draw main image
+                    ctx.drawImage(mainImg, 0, 0);
+                    
+                    // Draw overlay on top
+                    ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                    
+                    // Convert to blob
+                    canvas.toBlob((blob) => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            resolve({
+                                name: `${mainFile.name.split('.')[0]}_with_${overlayFile.name.split('.')[0]}.png`,
+                                originalName: mainFile.name,
+                                overlayName: overlayFile.name,
+                                data: e.target.result,
+                                type: 'image',
+                                status: 'completed'
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    }, 'image/png');
                 }
-            };
-            img.onerror = function() {
-                console.log(`Demo image ${src} not found - users can upload their own images`);
-            };
-            img.src = src;
+            }
+            
+            mainImg.onload = checkBothLoaded;
+            overlayImg.onload = checkBothLoaded;
+            
+            mainImg.onerror = () => reject(new Error('Failed to load main image'));
+            overlayImg.onerror = () => reject(new Error('Failed to load overlay image'));
+            
+            // Load images
+            const mainReader = new FileReader();
+            const overlayReader = new FileReader();
+            
+            mainReader.onload = (e) => mainImg.src = e.target.result;
+            overlayReader.onload = (e) => overlayImg.src = e.target.result;
+            
+            mainReader.readAsDataURL(mainFile.file);
+            overlayReader.readAsDataURL(overlayFile.file);
         }
+
+        // Merge video with overlay (extract first frame)
+        function mergeVideoWithOverlay(mainFile, overlayFile, resolve, reject) {
+            const video = document.createElement('video');
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            video.onloadeddata = function() {
+                video.currentTime = 1; // Get frame at 1 second
+            };
+            
+            video.onseeked = function() {
+                // Set canvas size
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                
+                // Draw video frame
+                ctx.drawImage(video, 0, 0);
+                
+                // Load and draw overlay
+                const overlayImg = new Image();
+                overlayImg.onload = function() {
+                    ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                    
+                    canvas.toBlob((blob) => {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            resolve({
+                                name: `${mainFile.name.split('.')[0]}_with_${overlayFile.name.split('.')[0]}.png`,
+                                originalName: mainFile.name,
+                                overlayName: overlayFile.name,
+                                data: e.target.result,
+                                type: 'image',
+                                status: 'completed'
+                            });
+                        };
+                        reader.readAsDataURL(blob);
+                    }, 'image/png');
+                };
+                
+                const overlayReader = new FileReader();
+                overlayReader.onload = (e) => overlayImg.src = e.target.result;
+                overlayReader.readAsDataURL(overlayFile.file);
+            };
+            
+            video.onerror = () => reject(new Error('Failed to load video'));
+            
+            const videoReader = new FileReader();
+            videoReader.onload = (e) => video.src = e.target.result;
+            videoReader.readAsDataURL(mainFile.file);
+        }
+
+        // Update progress
+        function updateProgress(percent, message) {
+            progressFill.style.width = percent + '%';
+            progressText.textContent = `${message} (${Math.round(percent)}%)`;
+        }
+
+        // Display results
+        function displayResults() {
+            resultsSection.style.display = 'block';
+            resultsGrid.innerHTML = '';
+            
+            processedResults.forEach((result, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const statusClass = result.status === 'completed' ? 'status-completed' : 'status-error';
+                const statusText = result.status === 'completed' ? '✅ Completed' : '❌ Error';
+                
+                resultItem.innerHTML = `
+                    ${result.status === 'completed' ? 
+                        `<img src="${result.data}" alt="Result" class="result-preview">` : 
+                        `<div style="height: 200px; background: #f5f5f5; display: flex; align-items: center; justify-content: center; border-radius: 10px;">❌ Processing Failed</div>`
+                    }
+                    <div class="result-info">
+                        <h4>${result.name}</h4>
+                        <p>Type: ${result.type.toUpperCase()}</p>
+                        ${result.overlayName ? `<p>Overlay: ${result.overlayName}</p>` : ''}
+                        <span class="status-indicator ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+                
+                resultsGrid.appendChild(resultItem);
+            });
+        }
+
+        // Download as ZIP
+        async function downloadAsZip() {
+            if (processedResults.length === 0) return;
+            
+            const zip = new JSZip();
+            const folder = zip.folder("snapchat-merged-files");
+            
+            processedResults.forEach((result, index) => {
+                if (result.status === 'completed') {
+                    // Convert data URL to blob
+                    const base64Data = result.data.split(',')[1];
+                    folder.file(result.name, base64Data, { base64: true });
+                }
+            });
+            
+            try {
+                const content = await zip.generateAsync({ type: "blob" });
+                const url = URL.createObjectURL(content);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `snapchat-merged-files-${new Date().getTime()}.zip`;
+                link.click();
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('Error creating ZIP:', error);
+                alert('Failed to create ZIP file. Please try downloading individual files.');
+            }
+        }
+
+        // Download individual files
+        function downloadIndividualFiles() {
+            processedResults.forEach((result, index) => {
+                if (result.status === 'completed') {
+                    const link = document.createElement('a');
+                    link.href = result.data;
+                    link.download = result.name;
+                    link.click();
+                    
+                    // Small delay between downloads
+                    setTimeout(() => {}, index * 100);
+                }
+            });
+        }
+
+        // Clear all files
+        function clearAllFiles() {
+            uploadedFiles = [];
+            processedResults = [];
+            fileInfo.style.display = 'none';
+            actionButtons.style.display = 'none';
+            resultsSection.style.display = 'none';
+            progressContainer.style.display = 'none';
+            fileInput.value = '';
+        }
+
+        // Event listeners
+        processBtn.addEventListener('click', processFiles);
+        clearBtn.addEventListener('click', clearAllFiles);
+        downloadZipBtn.addEventListener('click', downloadAsZip);
+        downloadIndividualBtn.addEventListener('click', downloadIndividualFiles);
+
+        // Initialize
+        console.log('🎬 Advanced Snapchat Media Merger loaded');
+        console.log(`💻 Using up to ${MAX_WORKERS} workers for parallel processing`);
     </script>
 </body>
 </html>

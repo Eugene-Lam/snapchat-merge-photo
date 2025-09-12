@@ -1,31 +1,119 @@
-# 📝 Instructions for Your Snapchat Images
+# 🚀 Quick Start Guide - Advanced Snapchat Media Merger
 
-## To Use Your Specific Snapchat Images:
+## 💡 Super Simple Usage
 
-### Option 1: Use the Web Interface (Recommended)
-1. Open `index.html` in your web browser
-2. Right-click on the first image (Seattle Center filter) and save it to your computer
-3. Right-click on the second image (Space Needle photo) and save it to your computer
-4. Use the upload buttons in the web interface:
-   - Upload the Space Needle photo as the "Base Image"
-   - Upload the Seattle Center filter as the "Filter/Overlay"
+1. **Open**: Double-click `index.html` in any web browser
+2. **Drop**: Drag all your Snapchat files into the drop zone
+3. **Process**: Click "Process All Files"  
+4. **Download**: Get your ZIP file with all merged results
 
-### Option 2: Set Up Demo Images
-1. Save the Seattle Center filter image as: `assets/seattle-filter.png`
-2. Save the Space Needle photo as: `assets/space-needle.jpg`
-3. Open `index.html` - the images will load automatically
+That's it! The tool automatically handles everything else.
 
-## Image Details from Your Snapchat Export:
+---
 
-**Filter Image** (Seattle Center text overlay):
-- Black background with white text
-- "SEATTLE CENTER" and "Seattle, WA" 
-- This should be saved as the filter/overlay
+## 🎯 File Naming for Best Results
 
-**Base Image** (Space Needle photo):
-- Photo of Seattle Space Needle with parking area
-- Clear blue sky background
-- This should be saved as the base image
+### ✅ The tool auto-detects these patterns:
 
-## Result:
-The web tool will overlay the "SEATTLE CENTER" text on top of the Space Needle photo, recreating your original Snapchat image with the filter applied.
+**MAIN FILES** (your photos/videos):
+```
+photo_main.jpg ✓
+seattle_base.png ✓  
+original_image.jpg ✓
+my_video.mp4 ✓
+snap_shot.png ✓
+```
+
+**OVERLAY FILES** (filters/text):
+```
+text_overlay.png ✓
+snapchat_filter.png ✓
+watermark_logo.jpg ✓
+caption_text.png ✓
+seattle_filter.png ✓
+```
+
+### 🔄 What Happens:
+- **Main + Overlay**: Creates merged versions
+- **Main Only**: Keeps original files unchanged
+- **Multiple Overlays**: Each main paired with each overlay
+
+---
+
+## 📱 For Your Snapchat Export:
+
+### Step 1: Organize Files
+Your Snapchat export typically contains:
+- Main content files (photos/videos)
+- Filter/overlay files (text, stickers, etc.)
+
+### Step 2: Batch Process
+1. Select **ALL files** at once (Ctrl+A or drag entire folder)
+2. Drop into the web tool
+3. Review the automatic categorization 
+4. Hit "Process All Files"
+
+### Step 3: Get Results
+- **ZIP Download**: All results in one file
+- **Individual**: Download files one by one
+- **Preview**: See thumbnails before downloading
+
+---
+
+## 🎮 Pro Tips
+
+### 🚀 **Performance**:
+- Process 20-50 files at a time for best speed
+- Use Chrome or Firefox for optimal performance
+- Large videos may take extra time
+
+### 🎨 **Quality**:
+- PNG overlays with transparency work best
+- High-resolution sources = better results
+- Tool preserves original dimensions
+
+### 📦 **Organization**:
+- Processed files include both original names
+- ZIP contains organized folder structure
+- Error files are reported clearly
+
+---
+
+## 🔧 Example Workflow
+
+```
+1. Snapchat Export Folder:
+   ├── photo1_main.jpg
+   ├── photo2_base.jpg  
+   ├── video_original.mp4
+   ├── text_overlay.png
+   └── logo_filter.png
+
+2. After Processing:
+   ├── photo1_main_with_text_overlay.png
+   ├── photo1_main_with_logo_filter.png
+   ├── photo2_base_with_text_overlay.png
+   ├── photo2_base_with_logo_filter.png
+   ├── video_original_with_text_overlay.png
+   └── video_original_with_logo_filter.png
+```
+
+---
+
+## 🚨 Need Help?
+
+### File Not Detected Correctly?
+- Rename with keywords: `main`, `overlay`, `filter`
+- Or just drop everything - worst case, you get originals!
+
+### Processing Taking Too Long?
+- Try smaller batches (20 files max)
+- Check file sizes (compress large videos first)
+- Use latest Chrome/Firefox
+
+### Something Not Working?
+- Refresh the page and try again  
+- Check browser console (F12) for errors
+- Ensure files are valid images/videos
+
+**Remember**: Everything happens in your browser - your files never leave your computer! 🔒

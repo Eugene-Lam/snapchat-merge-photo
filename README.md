@@ -1,69 +1,167 @@
-# 📸 Snapchat Photo Merger
+# 🎬 Advanced Snapchat Media Merger
 
-A web-based tool to merge Snapchat filter overlays with your photos. This static web page allows you to combine your Snapchat exported images - placing the filter on top and the base image underneath.
+A powerful web-based tool for batch processing Snapchat exports with automatic file detection, video support, and multiprocessing capabilities. Merge filters with photos and videos, then download results as individual files or ZIP archives.
 
 ## 🚀 Quick Start
 
 1. Open `index.html` in your web browser
-2. Upload your base image (the photo from Snapchat export)
-3. Upload your filter image (the overlay from Snapchat export)  
-4. Click "Download Merged Image" to save the combined result
+2. Drag and drop multiple files or click to select them
+3. Files are automatically categorized as "main" or "overlay" based on filenames
+4. Click "Process All Files" to merge everything in parallel
+5. Download individual files or get everything as a ZIP
 
-## 📁 How to Use with Your Snapchat Export
+## 🎯 Advanced Features
 
-### Step 1: Prepare Your Images
-From your Snapchat export, you'll typically have:
-- **Base Image**: The actual photo/video screenshot (e.g., the Space Needle photo)
-- **Filter/Overlay**: The filter or text overlay (e.g., "SEATTLE CENTER" text overlay)
+### 🔍 **Intelligent File Detection**
+- Automatically detects main files vs overlay files based on filename patterns
+- Recognizes patterns like: `overlay`, `filter`, `main`, `base`, `original`
+- Smart fallback logic for ambiguous filenames
 
-### Step 2: Using the Web Tool
-1. **Upload Base Image**: Click the first upload button and select your main photo
-2. **Upload Filter**: Click the second upload button and select your filter/overlay image  
-3. **Preview**: The tool will automatically overlay the filter on top of your base image
-4. **Download**: Click the download button to save your merged image
+### 📹 **Multi-Format Support**
+- **Images**: JPG, PNG, WebP, GIF
+- **Videos**: MP4 (extracts frames for overlay application)
+- **Batch Processing**: Handle dozens of files simultaneously
 
-### Step 3: For the Provided Example
-If you want to use the Seattle Center example images:
-1. Save the Space Needle photo as `assets/space-needle.jpg`
-2. Save the Seattle Center filter as `assets/seattle-filter.png`
-3. The page will automatically load these as a demo
+### ⚡ **Multiprocessing Engine**
+- Uses Web Workers for true parallel processing
+- Automatically detects CPU cores for optimal performance
+- Processes multiple file combinations concurrently
+- Real-time progress tracking with detailed status
 
-## ✨ Features
+### 📦 **Flexible Output Options**
+- **ZIP Download**: Get all processed files in one archive
+- **Individual Downloads**: Download files one by one
+- **Original Preservation**: Files without overlays are kept as-is
+- **Smart Naming**: Merged files include both source names
 
-- **Drag & Drop Support**: Easy file uploading
-- **Live Preview**: See your merged image in real-time
-- **Responsive Design**: Works on desktop and mobile
-- **High Quality Output**: Downloads full-resolution merged images
-- **Modern UI**: Clean, intuitive interface
+## 📁 File Organization & Naming
 
-## 🛠 Technical Details
+### Automatic Detection Examples:
+```
+✅ MAIN FILES (detected automatically):
+- photo_main.jpg
+- seattle_base.png
+- original_image.jpg
+- snap_shot.mp4
+- my_video.mp4
 
-- **Pure HTML/CSS/JavaScript**: No dependencies required
-- **Canvas API**: Used for high-quality image merging
-- **Responsive Design**: Mobile-friendly interface
-- **Local Processing**: All image processing happens in your browser
+✅ OVERLAY FILES (detected automatically):
+- text_overlay.png
+- snapchat_filter.png
+- watermark_logo.png
+- caption_text.jpg
+```
 
-## 📱 Browser Compatibility
+### Processing Logic:
+1. **Main + Overlay**: Creates merged versions
+2. **Main Only**: Outputs original files unchanged
+3. **Multiple Combinations**: Each main file paired with each overlay
 
-Works in all modern browsers that support:
-- HTML5 Canvas API
-- FileReader API
-- CSS3 Features
+## 🎮 How to Use
 
-## 🔧 Customization
+### Basic Workflow:
+1. **Upload Files**: Drag multiple files or click to browse
+2. **Review Detection**: Check if files are correctly categorized
+3. **Process**: Click "Process All Files" for batch processing
+4. **Preview Results**: View thumbnails of all processed files
+5. **Download**: Get ZIP archive or individual files
 
-The tool supports:
-- Any image format (JPG, PNG, GIF, WebP)
-- Automatic scaling and positioning
-- Mix-blend-mode options for different overlay effects
+### Advanced Usage:
+- **Mixed Batches**: Upload photos and videos together
+- **Multiple Overlays**: Apply different filters to the same base content
+- **Bulk Processing**: Handle entire Snapchat export folders at once
 
-## 🤝 Usage Tips
+## 🛠 Technical Specifications
 
-1. **Best Results**: Use high-resolution images for better quality
-2. **Filter Positioning**: The filter will automatically scale to fit the base image
-3. **Transparency**: PNG filters with transparency work best for overlays
-4. **File Size**: Larger images may take a moment to process
+### Core Technologies:
+- **HTML5 Canvas**: High-quality image processing
+- **Web Workers**: True multiprocessing support
+- **JSZip Library**: Client-side ZIP file creation
+- **FileReader API**: Local file handling
+- **Video API**: MP4 frame extraction
+
+### Performance Features:
+- **Parallel Processing**: Up to CPU core count simultaneous operations
+- **Memory Efficient**: Streams large files without loading everything at once
+- **Progress Tracking**: Real-time updates with detailed status
+- **Error Recovery**: Graceful handling of corrupted or unsupported files
+
+### Browser Compatibility:
+- **Modern Browsers**: Chrome 60+, Firefox 55+, Safari 12+, Edge 79+
+- **Required APIs**: Canvas, FileReader, Web Workers, Blob
+- **Optional Features**: OffscreenCanvas for better performance
+
+## 📊 Use Cases
+
+### 🎪 **Snapchat Export Processing**
+- Batch merge entire export folders
+- Automatically combine photos with their filters
+- Process videos with overlay application
+
+### 📷 **Content Creation**
+- Apply watermarks to multiple images
+- Batch add logos to photos
+- Create branded content series
+
+### 🎨 **Social Media Management**
+- Process multiple posts with consistent branding
+- Apply filters to video thumbnails
+- Create cohesive visual content
+
+## ⚙️ Configuration Options
+
+### File Detection Patterns:
+```javascript
+// Overlay patterns (customize in code):
+['overlay', 'filter', 'sticker', 'text', 'caption', 
+ 'watermark', 'logo', 'badge', 'stamp', 'label']
+
+// Main file patterns:
+['main', 'base', 'original', 'photo', 'image', 
+ 'video', 'snap', 'shot', 'pic']
+```
+
+### Performance Settings:
+- **Worker Count**: Auto-detects CPU cores (default: 4)
+- **Batch Size**: Dynamically calculated per worker
+- **Progress Updates**: Real-time with 10ms intervals
+
+## 🚨 Troubleshooting
+
+### Common Issues:
+1. **Large Files**: Videos >100MB may process slowly
+2. **Browser Limits**: Some browsers limit concurrent operations
+3. **Memory**: Very large batches may require multiple sessions
+
+### Performance Tips:
+1. **Optimize Images**: Compress before upload for faster processing
+2. **Batch Size**: Process 20-50 files at a time for best results
+3. **Browser Choice**: Chrome and Firefox offer best performance
+
+## 📋 File Structure
+
+```
+/
+├── index.html                 # Main application
+├── media-processor.worker.js  # Web Worker for processing
+├── assets/                    # Demo files directory
+├── README.md                  # This documentation
+└── INSTRUCTIONS.md           # Quick usage guide
+```
+
+## 🤝 Contributing
+
+This is a client-side application with no server requirements. To modify:
+
+1. **UI Changes**: Edit CSS styles in `index.html`
+2. **Processing Logic**: Modify JavaScript functions
+3. **Worker Performance**: Enhance `media-processor.worker.js`
+4. **Detection Patterns**: Update filename matching arrays
 
 ---
 
-*Simply open `index.html` in any web browser to get started!* 🌟
+## 🎉 Getting Started
+
+**Simply open `index.html` in any modern web browser!**
+
+No installation, no server, no dependencies - just drag, drop, and process! 🚀
