@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapchat Export Merger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #FFFC00 0%, #FF6B35 100%);
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.1rem;
+        }
+
+        .upload-section {
+            padding: 40px;
+            background: #f8f9fa;
+        }
+
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 15px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+
+        .upload-text {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .upload-subtext {
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .processing-section {
+            padding: 20px 40px;
+            display: none;
+        }
+
+        .processing-item {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .file-info {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .file-status {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .results-section {
+            padding: 20px 40px 40px;
+            display: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-item {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+
+        .result-preview {
+            width: 100%;
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .result-name {
+            font-weight: bold;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+
+        .download-actions {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            margin-top: 30px;
+            border-radius: 15px;
+        }
+
+        .status-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+        }
+
+        .status-pending {
+            background: #ffc107;
+        }
+
+        .status-processing {
+            background: #17a2b8;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-complete {
+            background: #28a745;
+        }
+
+        .status-error {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .file-list {
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .file-item {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            margin: 5px 0;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .remove-file {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .instructions {
+            background: #e7f3ff;
+            padding: 20px;
+            margin: 20px 40px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .instructions h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .instructions ul {
+            margin-left: 20px;
+            color: #666;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📸 Snapchat Export Merger</h1>
+            <p>Merge your Snapchat memories with overlays - 100% client-side processing</p>
+        </div>
+
+        <div class="instructions">
+            <h3>How to use:</h3>
+            <ul>
+                <li>Upload main images/videos and overlay images</li>
+                <li>Files will be automatically paired by name similarity</li>
+                <li>Main files without overlays will be processed as-is</li>
+                <li>All processing happens in your browser - no data is sent to servers</li>
+                <li>Download individual files or get everything in a ZIP</li>
+            </ul>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drop your Snapchat export files here</div>
+                <div class="upload-subtext">or click to browse (supports images and MP4 videos)</div>
+                <input type="file" id="fileInput" class="file-input" multiple accept="image/*,video/mp4">
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    Choose Files
+                </button>
+            </div>
+
+            <div class="file-list" id="fileList" style="display: none;">
+                <h3>Selected Files:</h3>
+                <div id="selectedFiles"></div>
+                <button class="btn" id="processBtn" onclick="processFiles()" disabled>
+                    Process Files
+                </button>
+                <button class="btn" onclick="clearFiles()">Clear All</button>
+            </div>
+        </div>
+
+        <div class="processing-section" id="processingSection">
+            <h2>Processing Files...</h2>
+            <div id="processingList"></div>
+        </div>
+
+        <div class="results-section" id="resultsSection">
+            <h2>Results</h2>
+            <div class="results-grid" id="resultsGrid"></div>
+            <div class="download-actions">
+                <button class="btn" id="downloadAllBtn" onclick="downloadAll()">
+                    📦 Download All as ZIP
+                </button>
+                <button class="btn" onclick="startOver()">
+                    🔄 Start Over
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include JSZip library for ZIP file creation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <script>
+        let selectedFiles = [];
+        let processedFiles = [];
+
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const selectedFilesDiv = document.getElementById('selectedFiles');
+        const processBtn = document.getElementById('processBtn');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            addFiles(files);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            addFiles(files);
+        });
+
+        function addFiles(files) {
+            // Filter for supported file types
+            const supportedFiles = files.filter(file => 
+                file.type.startsWith('image/') || file.type === 'video/mp4'
+            );
+
+            selectedFiles = [...selectedFiles, ...supportedFiles];
+            updateFileList();
+        }
+
+        function updateFileList() {
+            if (selectedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            selectedFilesDiv.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const fileInfo = document.createElement('div');
+                fileInfo.innerHTML = `
+                    <strong>${file.name}</strong><br>
+                    <small>${file.type} - ${(file.size / 1024 / 1024).toFixed(2)} MB</small>
+                `;
+                
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-file';
+                removeBtn.innerHTML = '×';
+                removeBtn.onclick = () => removeFile(index);
+                
+                fileItem.appendChild(fileInfo);
+                fileItem.appendChild(removeBtn);
+                selectedFilesDiv.appendChild(fileItem);
+            });
+
+            processBtn.disabled = selectedFiles.length === 0;
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+        }
+
+        function clearFiles() {
+            selectedFiles = [];
+            updateFileList();
+            fileInput.value = '';
+        }
+
+        // File pairing logic
+        function pairFiles(files) {
+            const pairs = [];
+            const usedFiles = new Set();
+
+            // First pass: find exact matches and overlay pairs
+            files.forEach((file, index) => {
+                if (usedFiles.has(index)) return;
+
+                const baseName = getBaseName(file.name);
+                const isMainFile = isVideoFile(file) || (!baseName.toLowerCase().includes('overlay') && !baseName.toLowerCase().includes('sticker'));
+                
+                if (isMainFile) {
+                    // Look for a matching overlay
+                    const overlayIndex = files.findIndex((otherFile, otherIndex) => {
+                        if (usedFiles.has(otherIndex) || otherIndex === index) return false;
+                        const otherBaseName = getBaseName(otherFile.name);
+                        return (
+                            (otherBaseName.toLowerCase().includes('overlay') || 
+                             otherBaseName.toLowerCase().includes('sticker')) &&
+                            isImageFile(otherFile) &&
+                            (baseName === otherBaseName.replace(/[_-]?(overlay|sticker)[_-]?/i, '') ||
+                             otherBaseName.replace(/[_-]?(overlay|sticker)[_-]?/i, '') === baseName)
+                        );
+                    });
+
+                    if (overlayIndex !== -1) {
+                        pairs.push({
+                            main: file,
+                            overlay: files[overlayIndex],
+                            outputName: `merged_${baseName}.${isVideoFile(file) ? 'mp4' : 'png'}`
+                        });
+                        usedFiles.add(index);
+                        usedFiles.add(overlayIndex);
+                    } else {
+                        // No overlay found, process as-is
+                        pairs.push({
+                            main: file,
+                            overlay: null,
+                            outputName: `processed_${file.name}`
+                        });
+                        usedFiles.add(index);
+                    }
+                }
+            });
+
+            // Second pass: handle remaining files as individual items
+            files.forEach((file, index) => {
+                if (!usedFiles.has(index)) {
+                    pairs.push({
+                        main: file,
+                        overlay: null,
+                        outputName: `processed_${file.name}`
+                    });
+                }
+            });
+
+            return pairs;
+        }
+
+        function getBaseName(fileName) {
+            return fileName.split('.').slice(0, -1).join('.');
+        }
+
+        function isVideoFile(file) {
+            return file.type.startsWith('video/');
+        }
+
+        function isImageFile(file) {
+            return file.type.startsWith('image/');
+        }
+
+        // Processing functionality
+        async function processFiles() {
+            if (selectedFiles.length === 0) return;
+
+            const processingSection = document.getElementById('processingSection');
+            const processingList = document.getElementById('processingList');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+
+            // Show processing section
+            processingSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            processingList.innerHTML = '';
+            resultsGrid.innerHTML = '';
+            processedFiles = [];
+
+            // Pair files
+            const pairs = pairFiles(selectedFiles);
+
+            // Process each pair
+            for (let i = 0; i < pairs.length; i++) {
+                const pair = pairs[i];
+                
+                // Create processing item UI
+                const processingItem = document.createElement('div');
+                processingItem.className = 'processing-item';
+                processingItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-name">${pair.outputName}</div>
+                        <div class="file-status">
+                            <span class="status-icon status-pending"></span>
+                            Pending...
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                    </div>
+                `;
+                processingList.appendChild(processingItem);
+
+                // Update status to processing
+                const statusIcon = processingItem.querySelector('.status-icon');
+                const statusText = processingItem.querySelector('.file-status');
+                const progressFill = processingItem.querySelector('.progress-fill');
+
+                statusIcon.className = 'status-icon status-processing';
+                statusText.innerHTML = '<span class="status-icon status-processing"></span>Processing...';
+                progressFill.style.width = '50%';
+
+                try {
+                    let processedBlob;
+                    
+                    if (isVideoFile(pair.main)) {
+                        processedBlob = await processVideo(pair.main, pair.overlay);
+                    } else {
+                        processedBlob = await processImage(pair.main, pair.overlay);
+                    }
+
+                    // Update status to complete
+                    statusIcon.className = 'status-icon status-complete';
+                    statusText.innerHTML = '<span class="status-icon status-complete"></span>Complete!';
+                    progressFill.style.width = '100%';
+
+                    // Store processed file
+                    processedFiles.push({
+                        blob: processedBlob,
+                        name: pair.outputName,
+                        type: isVideoFile(pair.main) ? 'video/mp4' : 'image/png'
+                    });
+
+                } catch (error) {
+                    console.error('Processing error:', error);
+                    statusIcon.className = 'status-icon status-error';
+                    statusText.innerHTML = '<span class="status-icon status-error"></span>Error!';
+                }
+            }
+
+            // Show results
+            showResults();
+        }
+
+        async function processImage(mainFile, overlayFile) {
+            return new Promise((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const mainImg = new Image();
+                
+                mainImg.onload = () => {
+                    canvas.width = mainImg.width;
+                    canvas.height = mainImg.height;
+                    
+                    // Draw main image
+                    ctx.drawImage(mainImg, 0, 0);
+                    
+                    if (overlayFile) {
+                        const overlayImg = new Image();
+                        overlayImg.onload = () => {
+                            // Draw overlay image (you can adjust positioning/scaling here)
+                            ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                            
+                            canvas.toBlob(resolve, 'image/png');
+                        };
+                        overlayImg.onerror = reject;
+                        overlayImg.src = URL.createObjectURL(overlayFile);
+                    } else {
+                        canvas.toBlob(resolve, 'image/png');
+                    }
+                };
+                
+                mainImg.onerror = reject;
+                mainImg.src = URL.createObjectURL(mainFile);
+            });
+        }
+
+        async function processVideo(mainFile, overlayFile) {
+            // For videos, we'll create a simple overlay if provided
+            // This is a basic implementation - for more complex video processing,
+            // you'd need more advanced libraries like FFmpeg.wasm
+            
+            if (!overlayFile) {
+                // No overlay, return original video
+                return new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const blob = new Blob([reader.result], { type: 'video/mp4' });
+                        resolve(blob);
+                    };
+                    reader.readAsArrayBuffer(mainFile);
+                });
+            }
+            
+            // For now, we'll create a thumbnail with overlay as a fallback
+            // In a full implementation, you'd use FFmpeg.wasm or similar
+            return processVideoThumbnail(mainFile, overlayFile);
+        }
+
+        async function processVideoThumbnail(videoFile, overlayFile) {
+            return new Promise((resolve, reject) => {
+                const video = document.createElement('video');
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                
+                video.onloadeddata = () => {
+                    video.currentTime = 1; // Get frame at 1 second
+                };
+                
+                video.onseeked = () => {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Draw video frame
+                    ctx.drawImage(video, 0, 0);
+                    
+                    if (overlayFile) {
+                        const overlayImg = new Image();
+                        overlayImg.onload = () => {
+                            // Draw overlay
+                            ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                            canvas.toBlob(resolve, 'image/png');
+                        };
+                        overlayImg.src = URL.createObjectURL(overlayFile);
+                    } else {
+                        canvas.toBlob(resolve, 'image/png');
+                    }
+                };
+                
+                video.onerror = reject;
+                video.src = URL.createObjectURL(videoFile);
+            });
+        }
+
+        function showResults() {
+            const processingSection = document.getElementById('processingSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const resultsGrid = document.getElementById('resultsGrid');
+
+            processingSection.style.display = 'none';
+            resultsSection.style.display = 'block';
+
+            resultsGrid.innerHTML = '';
+
+            processedFiles.forEach((file, index) => {
+                const resultItem = document.createElement('div');
+                resultItem.className = 'result-item';
+                
+                const preview = document.createElement(file.type.startsWith('video/') ? 'video' : 'img');
+                preview.className = 'result-preview';
+                preview.src = URL.createObjectURL(file.blob);
+                if (file.type.startsWith('video/')) {
+                    preview.controls = true;
+                }
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'result-name';
+                nameDiv.textContent = file.name;
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.className = 'btn';
+                downloadBtn.textContent = 'Download';
+                downloadBtn.onclick = () => downloadFile(file.blob, file.name);
+                
+                resultItem.appendChild(preview);
+                resultItem.appendChild(nameDiv);
+                resultItem.appendChild(downloadBtn);
+                resultsGrid.appendChild(resultItem);
+            });
+        }
+
+        function downloadFile(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function downloadAll() {
+            if (processedFiles.length === 0) return;
+
+            const zip = new JSZip();
+            
+            // Add all processed files to zip
+            processedFiles.forEach(file => {
+                zip.file(file.name, file.blob);
+            });
+
+            try {
+                const zipBlob = await zip.generateAsync({ type: 'blob' });
+                downloadFile(zipBlob, 'snapchat_merged_files.zip');
+            } catch (error) {
+                console.error('Error creating ZIP:', error);
+                alert('Error creating ZIP file. Please try downloading files individually.');
+            }
+        }
+
+        function startOver() {
+            selectedFiles = [];
+            processedFiles = [];
+            updateFileList();
+            document.getElementById('processingSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>
