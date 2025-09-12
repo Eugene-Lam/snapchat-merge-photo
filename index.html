@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapchat Photo Merger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .merger-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .base-image {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .filter-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            mix-blend-mode: normal;
+            pointer-events: none;
+        }
+
+        .controls {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .file-input-group {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ddd;
+            border-radius: 10px;
+            background: #f9f9f9;
+        }
+
+        .file-input-group label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .file-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-top: 20px;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .download-btn:active {
+            transform: translateY(0);
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .container {
+                padding: 20px;
+                margin: 10px;
+            }
+        }
+
+        .sample-text {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📸 Snapchat Photo Merger</h1>
+        <p>Merge your Snapchat filter with your photos</p>
+    </div>
+
+    <div class="container">
+        <div class="merger-container" id="mergerContainer">
+            <img id="baseImage" class="base-image" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 300'%3E%3Crect width='400' height='300' fill='%23f0f0f0'/%3E%3Ctext x='200' y='150' font-family='Arial' font-size='16' text-anchor='middle' fill='%23999'%3EUpload your base image%3C/text%3E%3C/svg%3E" alt="Base Image">
+            <div id="filterOverlay" class="filter-overlay"></div>
+        </div>
+
+        <div class="controls">
+            <div class="file-input-group">
+                <label for="baseImageInput">📷 Base Image (Photo/Video screenshot)</label>
+                <input type="file" id="baseImageInput" class="file-input" accept="image/*">
+            </div>
+
+            <div class="file-input-group">
+                <label for="filterInput">🎨 Filter/Overlay Image</label>
+                <input type="file" id="filterInput" class="file-input" accept="image/*">
+            </div>
+
+            <button class="download-btn" id="downloadBtn">💾 Download Merged Image</button>
+        </div>
+
+        <p class="sample-text">The provided Snapchat images will be loaded automatically</p>
+    </div>
+
+    <script>
+        // DOM elements
+        const baseImage = document.getElementById('baseImage');
+        const filterOverlay = document.getElementById('filterOverlay');
+        const baseImageInput = document.getElementById('baseImageInput');
+        const filterInput = document.getElementById('filterInput');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const mergerContainer = document.getElementById('mergerContainer');
+
+        // File input handlers
+        baseImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    baseImage.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        filterInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    filterOverlay.style.backgroundImage = `url(${e.target.result})`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // Download functionality
+        downloadBtn.addEventListener('click', function() {
+            // Create canvas for merging
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size to match the base image
+            const img = new Image();
+            img.onload = function() {
+                canvas.width = img.width;
+                canvas.height = img.height;
+                
+                // Draw base image
+                ctx.drawImage(img, 0, 0);
+                
+                // Draw filter overlay if exists
+                const filterBg = filterOverlay.style.backgroundImage;
+                if (filterBg && filterBg !== 'none') {
+                    const filterImg = new Image();
+                    filterImg.onload = function() {
+                        ctx.drawImage(filterImg, 0, 0, canvas.width, canvas.height);
+                        downloadCanvas();
+                    };
+                    filterImg.src = filterBg.slice(5, -2); // Remove url(" and ")
+                } else {
+                    downloadCanvas();
+                }
+            };
+            img.src = baseImage.src;
+            
+            function downloadCanvas() {
+                // Create download link
+                const link = document.createElement('a');
+                link.download = 'snapchat-merged-photo.png';
+                link.href = canvas.toDataURL();
+                link.click();
+            }
+        });
+
+        // Auto-load the provided Snapchat images if they exist
+        window.addEventListener('load', function() {
+            // Check if demo images exist and load them
+            loadImageIfExists('assets/space-needle.jpg', baseImage);
+            loadImageIfExists('assets/seattle-filter.png', filterOverlay, true);
+        });
+
+        function loadImageIfExists(src, element, isFilter = false) {
+            const img = new Image();
+            img.onload = function() {
+                if (isFilter) {
+                    element.style.backgroundImage = `url(${src})`;
+                } else {
+                    element.src = src;
+                }
+            };
+            img.onerror = function() {
+                console.log(`Demo image ${src} not found - users can upload their own images`);
+            };
+            img.src = src;
+        }
+    </script>
+</body>
+</html>
