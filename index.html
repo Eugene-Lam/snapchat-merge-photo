@@ -458,8 +458,8 @@
                         `;
                         if (processedFile) {
                             const previewUrl = URL.createObjectURL(processedFile.blob);
-                            // Use MP4 MIME type for preview even if recorded as WebM
-                            const previewType = processedFile.type === 'video' ? 'video/mp4' : processedFile.blob.type;
+                            // Use the actual blob type for preview
+                            const previewType = processedFile.blob.type;
                             previewHTML = isVideo 
                                 ? `<video class="w-16 h-16 object-cover rounded-lg" muted>
                                      <source src="${previewUrl}" type="${previewType}">
@@ -536,7 +536,7 @@
                 const isVideo = main.type.startsWith('video/');
 
                 if (isVideo) {
-                    this.updateFileItem(id, 'processing', 'Processing video for MP4 output...');
+                    this.updateFileItem(id, 'processing', 'Processing video (attempting MP4 format)...');
                     await this.processVideo(id, main, overlay);
                 } else {
                     this.updateFileItem(id, 'processing', 'Processing image...');
@@ -715,20 +715,26 @@
                             }
                         }
                         
-                        // Use WebM for recording (more reliable audio) - we'll convert to MP4 later
+                        // Try MP4 first for QuickTime compatibility, fallback to WebM if needed
                         const mimeTypes = [
-                            'video/webm;codecs=vp9,opus',
+                            'video/mp4;codecs="avc1.42E01E,mp4a.40.2"', // H.264 Baseline + AAC
+                            'video/mp4;codecs="avc1.4D401E,mp4a.40.2"', // H.264 Main + AAC
+                            'video/mp4;codecs=h264,aac',
+                            'video/mp4;codecs=avc1,mp4a',
+                            'video/mp4',
+                            'video/webm;codecs=vp9,opus', // Fallback to WebM if MP4 not supported
                             'video/webm;codecs=vp8,opus',
-                            'video/webm;codecs=vp9', 
-                            'video/webm;codecs=vp8',
                             'video/webm'
                         ];
                         
-                        let selectedMimeType = 'video/webm'; // reliable fallback
+                        let selectedMimeType = 'video/mp4'; // prefer MP4
+                        let isMP4Recording = false;
+                        
                         for (const mimeType of mimeTypes) {
                             if (MediaRecorder.isTypeSupported(mimeType)) {
                                 selectedMimeType = mimeType;
-                                console.log('Recording with reliable MIME type:', mimeType);
+                                isMP4Recording = mimeType.includes('mp4');
+                                console.log('Selected MIME type for recording:', mimeType, isMP4Recording ? '(True MP4)' : '(WebM fallback)');
                                 break;
                             }
                         }
@@ -738,9 +744,16 @@
                             mimeType: selectedMimeType,
                         };
                         
-                        // Add bitrate settings for better WebM quality
-                        mediaRecorderOptions.audioBitsPerSecond = 128000; // 128kbps for good audio quality
-                        mediaRecorderOptions.videoBitsPerSecond = 2500000; // 2.5Mbps for good video quality
+                        // Add bitrate settings optimized for the recording format
+                        if (isMP4Recording) {
+                            // MP4 settings for QuickTime compatibility
+                            mediaRecorderOptions.audioBitsPerSecond = 128000; // 128kbps AAC
+                            mediaRecorderOptions.videoBitsPerSecond = 2000000; // 2Mbps H.264
+                        } else {
+                            // WebM fallback settings
+                            mediaRecorderOptions.audioBitsPerSecond = 128000; // 128kbps Opus
+                            mediaRecorderOptions.videoBitsPerSecond = 2500000; // 2.5Mbps VP8/VP9
+                        }
                         
                         console.log('Creating MediaRecorder with options:', mediaRecorderOptions);
                         console.log('Stream tracks:', stream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState })));
@@ -765,20 +778,24 @@
                                 console.warn('Audio context cleanup failed:', cleanupError);
                             }
                             
-                            // Record as WebM for reliability, present as MP4 to user
+                            // Handle the recorded format appropriately
                             console.log('Recording completed, creating blob with type:', selectedMimeType);
                             console.log('Total chunks:', recordedChunks.length);
                             
-                            // Create blob with the actual recorded format (WebM)
+                            // Create blob with the actual recorded format
                             const blob = new Blob(recordedChunks, { type: selectedMimeType });
                             
-                            // But name the file as MP4 for user preference
-                            const fileExtension = 'mp4';
+                            // Set file extension based on actual format for compatibility
+                            const fileExtension = isMP4Recording ? 'mp4' : 'webm';
+                            const formatMessage = isMP4Recording ? 
+                                'MP4 video processed (QuickTime compatible)' : 
+                                'WebM video processed (Chrome/Firefox compatible)';
                             
                             console.log('Created blob:', {
                                 size: blob.size,
                                 type: blob.type,
-                                filename: `${id}-merged.${fileExtension}`
+                                filename: `${id}-merged.${fileExtension}`,
+                                isMP4Recording
                             });
                             const processedFile = {
                                 id,
@@ -790,7 +807,7 @@
                             };
 
                             this.processedFiles.push(processedFile);
-                            this.updateFileItem(id, 'success', 'Video processed successfully', processedFile);
+                            this.updateFileItem(id, 'success', formatMessage, processedFile);
                             this.updateDownloadButtonState();
                             resolve();
                         };
@@ -925,16 +942,9 @@
             async downloadAllAsZip() {
                 const zip = new JSZip();
 
-                // Add all processed files to zip with proper MP4 conversion
+                // Add all processed files to zip in their native formats
                 this.processedFiles.forEach(file => {
-                    let fileBlob = file.blob;
-                    
-                    // Convert WebM to MP4 MIME type for ZIP
-                    if (file.type === 'video' && file.blob.type.includes('webm')) {
-                        fileBlob = new Blob([file.blob], { type: 'video/mp4' });
-                    }
-                    
-                    zip.file(file.filename, fileBlob);
+                    zip.file(file.filename, file.blob);
                 });
 
                 // Generate and download zip
@@ -959,15 +969,8 @@
                 if (fileItem && fileItem.processedFile) {
                     const file = fileItem.processedFile;
                     
-                    // Create download blob with MP4 MIME type for better compatibility
-                    let downloadBlob = file.blob;
-                    if (file.type === 'video' && file.blob.type.includes('webm')) {
-                        // Create a new blob with MP4 MIME type for download
-                        downloadBlob = new Blob([file.blob], { type: 'video/mp4' });
-                        console.log('Converting WebM blob to MP4 MIME type for download');
-                    }
-                    
-                    const url = URL.createObjectURL(downloadBlob);
+                    // Download the file in its native recorded format (no conversion needed)
+                    const url = URL.createObjectURL(file.blob);
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = file.filename;
@@ -975,6 +978,8 @@
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
+                    
+                    console.log('Downloaded file:', file.filename, 'Type:', file.blob.type);
                 }
             }
         }
