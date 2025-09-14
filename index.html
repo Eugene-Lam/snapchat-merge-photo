@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Snapchat Media Merger</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        .drag-over {
+            @apply border-blue-500 bg-blue-50;
+        }
+        
+        .processing {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .progress-bar {
+            transition: width 0.3s ease;
+        }
+        
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b">
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="text-center">
+                <h1 class="text-3xl font-bold text-gray-900 mb-2">Snapchat Media Merger</h1>
+                <p class="text-gray-600">Merge your exported Snapchat photos and videos with their overlay filters</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Instructions -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
+            <h2 class="text-lg font-semibold text-blue-900 mb-3">How it works:</h2>
+            <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
+                <div>
+                    <h3 class="font-medium mb-2">1. File Naming Convention</h3>
+                    <ul class="space-y-1 ml-4">
+                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.jpg</code> - Base image</li>
+                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.mp4</code> - Base video</li>
+                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-overlay.png</code> - Filter overlay</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-medium mb-2">2. Drag & Drop</h3>
+                    <p>Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drop Zone -->
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-8 transition-colors duration-200 hover:border-gray-400">
+            <div class="space-y-4">
+                <div class="text-6xl text-gray-400">📁</div>
+                <div>
+                    <p class="text-xl font-medium text-gray-700">Drop your Snapchat export files here</p>
+                    <p class="text-gray-500 mt-2">Or click to select files</p>
+                </div>
+                <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden">
+                <button id="selectFilesBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                    Select Files
+                </button>
+            </div>
+        </div>
+
+        <!-- Processing Status -->
+        <div id="processingSection" class="hidden mb-8">
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Processing Files</h3>
+                    <div class="loading-spinner w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                </div>
+                <div id="progressContainer" class="space-y-3">
+                    <!-- Progress items will be inserted here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="resultsSection" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-semibold text-gray-900">Processed Media</h3>
+                <button id="downloadAllBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    📦 Download All as ZIP
+                </button>
+            </div>
+            <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Results will be inserted here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        class SnapchatMediaMerger {
+            constructor() {
+                this.files = [];
+                this.processedFiles = [];
+                this.initializeEventListeners();
+            }
+
+            initializeEventListeners() {
+                const dropZone = document.getElementById('dropZone');
+                const fileInput = document.getElementById('fileInput');
+                const selectFilesBtn = document.getElementById('selectFilesBtn');
+                const downloadAllBtn = document.getElementById('downloadAllBtn');
+
+                // Drag and drop events
+                dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+                dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                dropZone.addEventListener('drop', this.handleDrop.bind(this));
+
+                // File input events
+                selectFilesBtn.addEventListener('click', () => fileInput.click());
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+
+                // Download all button
+                downloadAllBtn.addEventListener('click', this.downloadAllAsZip.bind(this));
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.classList.add('drag-over');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.classList.remove('drag-over');
+            }
+
+            handleDrop(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                e.currentTarget.classList.remove('drag-over');
+
+                const files = Array.from(e.dataTransfer.files);
+                this.processFiles(files);
+            }
+
+            handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                this.processFiles(files);
+            }
+
+            async processFiles(files) {
+                this.files = files;
+                this.processedFiles = [];
+                
+                // Show processing section
+                document.getElementById('processingSection').classList.remove('hidden');
+                document.getElementById('resultsSection').classList.add('hidden');
+
+                // Group files by ID and type
+                const fileGroups = this.groupFiles(files);
+                
+                // Process each group
+                const totalGroups = Object.keys(fileGroups).length;
+                let processedGroups = 0;
+
+                for (const [id, group] of Object.entries(fileGroups)) {
+                    try {
+                        await this.processFileGroup(id, group);
+                        processedGroups++;
+                        this.updateOverallProgress(processedGroups, totalGroups);
+                    } catch (error) {
+                        console.error(`Error processing group ${id}:`, error);
+                        this.addProgressItem(id, 'Error processing files', 'error');
+                    }
+                }
+
+                // Show results
+                setTimeout(() => {
+                    document.getElementById('processingSection').classList.add('hidden');
+                    document.getElementById('resultsSection').classList.remove('hidden');
+                    this.displayResults();
+                }, 1000);
+            }
+
+            groupFiles(files) {
+                const groups = {};
+
+                files.forEach(file => {
+                    const match = file.name.match(/^(.+?)-(main|overlay)\.(jpg|jpeg|png|mp4)$/i);
+                    if (match) {
+                        const [, id, type, ext] = match;
+                        if (!groups[id]) {
+                            groups[id] = {};
+                        }
+                        groups[id][type.toLowerCase()] = file;
+                    } else {
+                        // Handle files that don't match the pattern
+                        const timestamp = Date.now();
+                        const fallbackId = `unknown_${timestamp}_${Math.random().toString(36).substr(2, 9)}`;
+                        groups[fallbackId] = { main: file };
+                    }
+                });
+
+                return groups;
+            }
+
+            async processFileGroup(id, group) {
+                this.addProgressItem(id, 'Processing...', 'processing');
+
+                const { main, overlay } = group;
+
+                if (!main) {
+                    this.updateProgressItem(id, 'No main file found', 'error');
+                    return;
+                }
+
+                const isVideo = main.type.startsWith('video/');
+
+                if (isVideo) {
+                    await this.processVideo(id, main, overlay);
+                } else {
+                    await this.processImage(id, main, overlay);
+                }
+            }
+
+            async processImage(id, mainFile, overlayFile) {
+                return new Promise((resolve, reject) => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    let imagesLoaded = 0;
+                    const totalImages = overlayFile ? 2 : 1;
+
+                    const mainImg = new Image();
+                    const overlayImg = overlayFile ? new Image() : null;
+
+                    const checkComplete = () => {
+                        imagesLoaded++;
+                        if (imagesLoaded === totalImages) {
+                            // Set canvas size to main image dimensions
+                            canvas.width = mainImg.width;
+                            canvas.height = mainImg.height;
+
+                            // Draw main image
+                            ctx.drawImage(mainImg, 0, 0);
+
+                            // Draw overlay if present
+                            if (overlayImg) {
+                                ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                            }
+
+                            // Convert to blob
+                            canvas.toBlob((blob) => {
+                                const processedFile = {
+                                    id,
+                                    type: 'image',
+                                    blob,
+                                    filename: `${id}-merged.jpg`,
+                                    originalMain: mainFile.name,
+                                    hasOverlay: !!overlayFile
+                                };
+
+                                this.processedFiles.push(processedFile);
+                                this.updateProgressItem(id, 'Image processed successfully', 'success');
+                                resolve();
+                            }, 'image/jpeg', 0.9);
+                        }
+                    };
+
+                    mainImg.onload = checkComplete;
+                    mainImg.onerror = () => reject(new Error('Failed to load main image'));
+
+                    if (overlayImg) {
+                        overlayImg.onload = checkComplete;
+                        overlayImg.onerror = () => reject(new Error('Failed to load overlay image'));
+                        overlayImg.src = URL.createObjectURL(overlayFile);
+                    }
+
+                    mainImg.src = URL.createObjectURL(mainFile);
+                });
+            }
+
+            async processVideo(id, mainFile, overlayFile) {
+                return new Promise((resolve, reject) => {
+                    const video = document.createElement('video');
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    let overlayImg = null;
+                    let mediaRecorder;
+                    let recordedChunks = [];
+
+                    const processFrame = () => {
+                        if (video.paused || video.ended) {
+                            return;
+                        }
+
+                        // Draw video frame
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                        // Draw overlay if present
+                        if (overlayImg) {
+                            ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                        }
+
+                        requestAnimationFrame(processFrame);
+                    };
+
+                    video.addEventListener('loadedmetadata', () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+
+                        // Set up MediaRecorder
+                        const stream = canvas.captureStream(30); // 30 FPS
+                        mediaRecorder = new MediaRecorder(stream, {
+                            mimeType: 'video/webm;codecs=vp9'
+                        });
+
+                        mediaRecorder.ondataavailable = (event) => {
+                            if (event.data.size > 0) {
+                                recordedChunks.push(event.data);
+                            }
+                        };
+
+                        mediaRecorder.onstop = () => {
+                            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                            const processedFile = {
+                                id,
+                                type: 'video',
+                                blob,
+                                filename: `${id}-merged.webm`,
+                                originalMain: mainFile.name,
+                                hasOverlay: !!overlayFile
+                            };
+
+                            this.processedFiles.push(processedFile);
+                            this.updateProgressItem(id, 'Video processed successfully', 'success');
+                            resolve();
+                        };
+
+                        // Load overlay if present
+                        if (overlayFile) {
+                            overlayImg = new Image();
+                            overlayImg.onload = () => {
+                                startRecording();
+                            };
+                            overlayImg.src = URL.createObjectURL(overlayFile);
+                        } else {
+                            startRecording();
+                        }
+
+                        function startRecording() {
+                            mediaRecorder.start();
+                            video.play();
+                            processFrame();
+                        }
+                    });
+
+                    video.addEventListener('ended', () => {
+                        mediaRecorder.stop();
+                    });
+
+                    video.addEventListener('error', () => {
+                        reject(new Error('Failed to load video'));
+                    });
+
+                    video.src = URL.createObjectURL(mainFile);
+                });
+            }
+
+            addProgressItem(id, message, status) {
+                const progressContainer = document.getElementById('progressContainer');
+                const item = document.createElement('div');
+                item.id = `progress-${id}`;
+                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                
+                const statusIcon = {
+                    processing: '⏳',
+                    success: '✅',
+                    error: '❌'
+                };
+
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <span class="text-xl">${statusIcon[status] || '⏳'}</span>
+                        <div>
+                            <p class="font-medium text-gray-900">${id}</p>
+                            <p class="text-sm text-gray-600">${message}</p>
+                        </div>
+                    </div>
+                `;
+
+                progressContainer.appendChild(item);
+            }
+
+            updateProgressItem(id, message, status) {
+                const item = document.getElementById(`progress-${id}`);
+                if (item) {
+                    const statusIcon = {
+                        processing: '⏳',
+                        success: '✅',
+                        error: '❌'
+                    };
+
+                    item.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <span class="text-xl">${statusIcon[status] || '⏳'}</span>
+                            <div>
+                                <p class="font-medium text-gray-900">${id}</p>
+                                <p class="text-sm text-gray-600">${message}</p>
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            updateOverallProgress(processed, total) {
+                // This could be used to show an overall progress bar if needed
+                console.log(`Progress: ${processed}/${total} groups processed`);
+            }
+
+            displayResults() {
+                const resultsGrid = document.getElementById('resultsGrid');
+                resultsGrid.innerHTML = '';
+
+                this.processedFiles.forEach(file => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'bg-white rounded-lg shadow-md overflow-hidden fade-in';
+
+                    const previewElement = file.type === 'video' 
+                        ? `<video controls class="w-full h-48 object-cover">
+                             <source src="${URL.createObjectURL(file.blob)}" type="video/webm">
+                           </video>`
+                        : `<img src="${URL.createObjectURL(file.blob)}" alt="Processed ${file.id}" class="w-full h-48 object-cover">`;
+
+                    resultItem.innerHTML = `
+                        ${previewElement}
+                        <div class="p-4">
+                            <h4 class="font-semibold text-gray-900 mb-2">${file.id}</h4>
+                            <p class="text-sm text-gray-600 mb-2">
+                                Original: ${file.originalMain}
+                                ${file.hasOverlay ? ' + overlay' : ' (no overlay)'}
+                            </p>
+                            <button onclick="downloadFile('${file.id}')" 
+                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
+                                Download ${file.type === 'video' ? 'Video' : 'Image'}
+                            </button>
+                        </div>
+                    `;
+
+                    resultsGrid.appendChild(resultItem);
+                });
+
+                // Enable download all button
+                document.getElementById('downloadAllBtn').disabled = false;
+            }
+
+            async downloadAllAsZip() {
+                const zip = new JSZip();
+
+                // Add all processed files to zip
+                this.processedFiles.forEach(file => {
+                    zip.file(file.filename, file.blob);
+                });
+
+                // Generate and download zip
+                try {
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(zipBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `snapchat-merged-${Date.now()}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                } catch (error) {
+                    console.error('Error creating ZIP:', error);
+                    alert('Error creating ZIP file. Please try downloading files individually.');
+                }
+            }
+
+            downloadFile(id) {
+                const file = this.processedFiles.find(f => f.id === id);
+                if (file) {
+                    const url = URL.createObjectURL(file.blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = file.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+            }
+        }
+
+        // Global function for download buttons
+        function downloadFile(id) {
+            window.snapchatMerger.downloadFile(id);
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            window.snapchatMerger = new SnapchatMediaMerger();
+        });
+    </script>
+</body>
+</html>
