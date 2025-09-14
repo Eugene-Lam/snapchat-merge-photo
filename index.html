@@ -8,7 +8,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         .drag-over {
-            @apply border-blue-500 bg-blue-50;
+            @apply border-blue-500 bg-blue-50 scale-105;
+        }
+        
+        .drag-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(59, 130, 246, 0.1);
+            border: 3px dashed rgb(59, 130, 246);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
         }
         
         .processing {
@@ -24,8 +39,13 @@
             animation: fadeIn 0.5s ease-out;
         }
         
-        .progress-bar {
-            transition: width 0.3s ease;
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-down {
+            animation: slideDown 0.3s ease-out;
         }
         
         .loading-spinner {
@@ -35,6 +55,35 @@
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        .status-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 2rem;
+            height: 2rem;
+            border-radius: 50%;
+            font-size: 0.875rem;
+        }
+        
+        .status-processing {
+            background-color: rgb(249, 250, 251);
+            border: 2px solid rgb(209, 213, 219);
+        }
+        
+        .status-success {
+            background-color: rgb(220, 252, 231);
+            color: rgb(34, 197, 94);
+        }
+        
+        .status-error {
+            background-color: rgb(254, 226, 226);
+            color: rgb(239, 68, 68);
+        }
+        
+        .compact-drop-zone {
+            padding: 1.5rem !important;
         }
     </style>
 </head>
@@ -51,63 +100,78 @@
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Instructions -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <h2 class="text-lg font-semibold text-blue-900 mb-3">How it works:</h2>
-            <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
-                <div>
-                    <h3 class="font-medium mb-2">1. File Naming Convention</h3>
-                    <ul class="space-y-1 ml-4">
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.jpg</code> - Base image</li>
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.mp4</code> - Base video</li>
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-overlay.png</code> - Filter overlay</li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="font-medium mb-2">2. Drag & Drop</h3>
-                    <p>Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+        <!-- Instructions Accordion -->
+        <div id="helpAccordion" class="mb-6">
+            <button id="helpToggle" class="flex items-center text-sm text-gray-600 hover:text-gray-800 transition-colors">
+                <span class="w-5 h-5 mr-2 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-semibold">?</span>
+                <span>How it works</span>
+                <svg id="helpChevron" class="w-4 h-4 ml-2 transform transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div id="helpContent" class="hidden mt-4 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
+                    <div>
+                        <h3 class="font-medium mb-2">1. File Naming Convention</h3>
+                        <ul class="space-y-1 ml-4">
+                            <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.jpg</code> - Base image</li>
+                            <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.mp4</code> - Base video</li>
+                            <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-overlay.png</code> - Filter overlay</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-medium mb-2">2. Drag & Drop</h3>
+                        <p>Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Drop Zone -->
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-8 transition-colors duration-200 hover:border-gray-400">
-            <div class="space-y-4">
+        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-8 transition-all duration-300 hover:border-gray-400 hover:bg-gray-50">
+            <div id="dropZoneContent" class="space-y-4">
                 <div class="text-6xl text-gray-400">📁</div>
                 <div>
                     <p class="text-xl font-medium text-gray-700">Drop your Snapchat export files here</p>
                     <p class="text-gray-500 mt-2">Or click to select files</p>
                 </div>
                 <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden">
-                <button id="selectFilesBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                <button id="selectFilesBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium">
                     Select Files
                 </button>
             </div>
-        </div>
-
-        <!-- Processing Status -->
-        <div id="processingSection" class="hidden mb-8">
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900">Processing Files</h3>
-                    <div class="loading-spinner w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                </div>
-                <div id="progressContainer" class="space-y-3">
-                    <!-- Progress items will be inserted here -->
+            <!-- Compact version shown after files are added -->
+            <div id="dropZoneCompact" class="hidden space-y-2">
+                <div class="text-2xl text-gray-400">📁</div>
+                <div>
+                    <p class="text-sm font-medium text-gray-600">Drop more files or</p>
+                    <button id="selectMoreBtn" class="text-blue-600 hover:text-blue-700 text-sm font-medium underline">
+                        select additional files
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Results Section -->
-        <div id="resultsSection" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-900">Processed Media</h3>
-                <button id="downloadAllBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    📦 Download All as ZIP
-                </button>
-            </div>
-            <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Results will be inserted here -->
+        <!-- Unified Files List -->
+        <div id="filesSection" class="hidden">
+            <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+                <!-- Header with actions -->
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900">Your Files</h3>
+                    <div class="flex items-center space-x-3">
+                        <button id="clearAllBtn" class="text-gray-600 hover:text-gray-800 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium">
+                            Clear All
+                        </button>
+                        <button id="downloadAllBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed text-sm font-medium" disabled>
+                            📦 Download ZIP
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Files list -->
+                <div id="filesList" class="divide-y divide-gray-200">
+                    <!-- File items will be inserted here -->
+                </div>
             </div>
         </div>
     </main>
@@ -117,6 +181,7 @@
             constructor() {
                 this.files = [];
                 this.processedFiles = [];
+                this.fileItems = new Map(); // Track file items by ID
                 this.initializeEventListeners();
             }
 
@@ -124,7 +189,10 @@
                 const dropZone = document.getElementById('dropZone');
                 const fileInput = document.getElementById('fileInput');
                 const selectFilesBtn = document.getElementById('selectFilesBtn');
+                const selectMoreBtn = document.getElementById('selectMoreBtn');
                 const downloadAllBtn = document.getElementById('downloadAllBtn');
+                const clearAllBtn = document.getElementById('clearAllBtn');
+                const helpToggle = document.getElementById('helpToggle');
 
                 // Drag and drop events
                 dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
@@ -133,28 +201,61 @@
 
                 // File input events
                 selectFilesBtn.addEventListener('click', () => fileInput.click());
+                selectMoreBtn.addEventListener('click', () => fileInput.click());
                 fileInput.addEventListener('change', this.handleFileSelect.bind(this));
 
-                // Download all button
+                // Control buttons
                 downloadAllBtn.addEventListener('click', this.downloadAllAsZip.bind(this));
+                clearAllBtn.addEventListener('click', this.clearAll.bind(this));
+
+                // Help accordion
+                helpToggle.addEventListener('click', this.toggleHelp.bind(this));
             }
 
             handleDragOver(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.currentTarget.classList.add('drag-over');
+                
+                // Add drag overlay effect
+                if (!document.getElementById('dragOverlay')) {
+                    const overlay = document.createElement('div');
+                    overlay.id = 'dragOverlay';
+                    overlay.className = 'drag-overlay';
+                    overlay.innerHTML = `
+                        <div class="text-center text-blue-600">
+                            <div class="text-4xl mb-2">📂</div>
+                            <p class="text-lg font-medium">Drop files here to process</p>
+                        </div>
+                    `;
+                    document.body.appendChild(overlay);
+                }
             }
 
             handleDragLeave(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.remove('drag-over');
+                
+                // Only remove drag styling if actually leaving the drop zone
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                    e.currentTarget.classList.remove('drag-over');
+                    const overlay = document.getElementById('dragOverlay');
+                    if (overlay) {
+                        overlay.remove();
+                    }
+                }
             }
 
             handleDrop(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 e.currentTarget.classList.remove('drag-over');
+                
+                // Remove drag overlay
+                const overlay = document.getElementById('dragOverlay');
+                if (overlay) {
+                    overlay.remove();
+                }
 
                 const files = Array.from(e.dataTransfer.files);
                 this.processFiles(files);
@@ -165,38 +266,90 @@
                 this.processFiles(files);
             }
 
-            async processFiles(files) {
-                this.files = files;
-                this.processedFiles = [];
+            toggleHelp() {
+                const helpContent = document.getElementById('helpContent');
+                const helpChevron = document.getElementById('helpChevron');
                 
-                // Show processing section
-                document.getElementById('processingSection').classList.remove('hidden');
-                document.getElementById('resultsSection').classList.add('hidden');
+                if (helpContent.classList.contains('hidden')) {
+                    helpContent.classList.remove('hidden');
+                    helpContent.classList.add('slide-down');
+                    helpChevron.style.transform = 'rotate(180deg)';
+                } else {
+                    helpContent.classList.add('hidden');
+                    helpContent.classList.remove('slide-down');
+                    helpChevron.style.transform = 'rotate(0deg)';
+                }
+            }
 
-                // Group files by ID and type
-                const fileGroups = this.groupFiles(files);
+            clearAll() {
+                // Clear all data
+                this.files = [];
+                this.processedFiles = [];
+                this.fileItems.clear();
+                
+                // Reset UI
+                const filesList = document.getElementById('filesList');
+                filesList.innerHTML = '';
+                
+                const filesSection = document.getElementById('filesSection');
+                filesSection.classList.add('hidden');
+                
+                // Reset drop zone to full size
+                this.resetDropZone();
+                
+                // Disable download button
+                document.getElementById('downloadAllBtn').disabled = true;
+            }
+
+            resetDropZone() {
+                const dropZoneContent = document.getElementById('dropZoneContent');
+                const dropZoneCompact = document.getElementById('dropZoneCompact');
+                const dropZone = document.getElementById('dropZone');
+                
+                dropZoneContent.classList.remove('hidden');
+                dropZoneCompact.classList.add('hidden');
+                dropZone.classList.remove('compact-drop-zone');
+            }
+
+            switchToCompactDropZone() {
+                const dropZoneContent = document.getElementById('dropZoneContent');
+                const dropZoneCompact = document.getElementById('dropZoneCompact');
+                const dropZone = document.getElementById('dropZone');
+                
+                dropZoneContent.classList.add('hidden');
+                dropZoneCompact.classList.remove('hidden');
+                dropZone.classList.add('compact-drop-zone');
+            }
+
+            async processFiles(files) {
+                // Add new files to existing array instead of replacing
+                const newFiles = Array.from(files);
+                this.files = [...this.files, ...newFiles];
+                
+                // Show files section and switch to compact drop zone
+                document.getElementById('filesSection').classList.remove('hidden');
+                this.switchToCompactDropZone();
+
+                // Group only the new files by ID and type
+                const fileGroups = this.groupFiles(newFiles);
+                
+                // Add file items to the list immediately
+                for (const [id, group] of Object.entries(fileGroups)) {
+                    this.addFileItem(id, group);
+                }
                 
                 // Process each group
-                const totalGroups = Object.keys(fileGroups).length;
-                let processedGroups = 0;
-
                 for (const [id, group] of Object.entries(fileGroups)) {
                     try {
                         await this.processFileGroup(id, group);
-                        processedGroups++;
-                        this.updateOverallProgress(processedGroups, totalGroups);
                     } catch (error) {
                         console.error(`Error processing group ${id}:`, error);
-                        this.addProgressItem(id, 'Error processing files', 'error');
+                        this.updateFileItem(id, 'error', 'Error processing files - please check file format');
                     }
                 }
 
-                // Show results
-                setTimeout(() => {
-                    document.getElementById('processingSection').classList.add('hidden');
-                    document.getElementById('resultsSection').classList.remove('hidden');
-                    this.displayResults();
-                }, 1000);
+                // Update download button state
+                this.updateDownloadButtonState();
             }
 
             groupFiles(files) {
@@ -221,13 +374,155 @@
                 return groups;
             }
 
+            addFileItem(id, group) {
+                const { main, overlay } = group;
+                const filesList = document.getElementById('filesList');
+                
+                const fileItem = document.createElement('div');
+                fileItem.id = `file-${id}`;
+                fileItem.className = 'p-4 fade-in';
+                
+                const isVideo = main && main.type.startsWith('video/');
+                const fileType = isVideo ? 'Video' : 'Image';
+                
+                fileItem.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <!-- Status Icon -->
+                        <div class="status-icon status-processing">
+                            <div class="loading-spinner w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-3">
+                                <h4 class="text-sm font-semibold text-gray-900 truncate">${id}</h4>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    ${fileType}
+                                </span>
+                                ${overlay ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">Has Overlay</span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">Processing...</p>
+                            <p class="text-xs text-gray-400 truncate">Original: ${main ? main.name : 'Unknown'}</p>
+                        </div>
+                        
+                        <!-- Preview/Actions Area -->
+                        <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <div class="text-2xl text-gray-400">${isVideo ? '🎬' : '🖼️'}</div>
+                        </div>
+                    </div>
+                `;
+                
+                filesList.appendChild(fileItem);
+                this.fileItems.set(id, { element: fileItem, status: 'processing', group });
+            }
+
+            updateFileItem(id, status, message, processedFile = null) {
+                const item = this.fileItems.get(id);
+                if (!item) return;
+                
+                const element = item.element;
+                const group = item.group;
+                const { main, overlay } = group;
+                const isVideo = main && main.type.startsWith('video/');
+                const fileType = isVideo ? 'Video' : 'Image';
+                
+                let statusIconHTML = '';
+                let previewHTML = '';
+                let actionsHTML = '';
+                
+                switch (status) {
+                    case 'processing':
+                        statusIconHTML = `
+                            <div class="status-icon status-processing">
+                                <div class="loading-spinner w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                            </div>
+                        `;
+                        previewHTML = `
+                            <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                                <div class="text-2xl text-gray-400">${isVideo ? '🎬' : '🖼️'}</div>
+                            </div>
+                        `;
+                        break;
+                    case 'success':
+                        statusIconHTML = `
+                            <div class="status-icon status-success">
+                                ✓
+                            </div>
+                        `;
+                        if (processedFile) {
+                            const previewUrl = URL.createObjectURL(processedFile.blob);
+                            previewHTML = isVideo 
+                                ? `<video class="w-16 h-16 object-cover rounded-lg" muted>
+                                     <source src="${previewUrl}" type="${processedFile.blob.type}">
+                                   </video>`
+                                : `<img src="${previewUrl}" alt="${id}" class="w-16 h-16 object-cover rounded-lg">`;
+                            
+                            actionsHTML = `
+                                <button onclick="downloadFile('${id}')" 
+                                        class="ml-3 bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors text-xs font-medium">
+                                    Download
+                                </button>
+                            `;
+                        }
+                        break;
+                    case 'error':
+                        statusIconHTML = `
+                            <div class="status-icon status-error">
+                                ✕
+                            </div>
+                        `;
+                        previewHTML = `
+                            <div class="w-16 h-16 bg-red-100 rounded-lg flex items-center justify-center">
+                                <div class="text-2xl text-red-400">⚠️</div>
+                            </div>
+                        `;
+                        break;
+                }
+                
+                element.innerHTML = `
+                    <div class="flex items-center space-x-4">
+                        <!-- Status Icon -->
+                        ${statusIconHTML}
+                        
+                        <!-- File Info -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center space-x-3">
+                                <h4 class="text-sm font-semibold text-gray-900 truncate">${id}</h4>
+                                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                                    ${fileType}
+                                </span>
+                                ${overlay ? '<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-600">Has Overlay</span>' : ''}
+                            </div>
+                            <p class="text-sm ${status === 'error' ? 'text-red-600' : 'text-gray-500'} mt-1">${message}</p>
+                            <p class="text-xs text-gray-400 truncate">Original: ${main ? main.name : 'Unknown'}</p>
+                        </div>
+                        
+                        <!-- Preview/Actions Area -->
+                        <div class="flex items-center">
+                            ${previewHTML}
+                            ${actionsHTML}
+                        </div>
+                    </div>
+                `;
+                
+                item.status = status;
+                if (processedFile) {
+                    item.processedFile = processedFile;
+                }
+            }
+
+            updateDownloadButtonState() {
+                const hasProcessedFiles = this.processedFiles.length > 0;
+                document.getElementById('downloadAllBtn').disabled = !hasProcessedFiles;
+            }
+
             async processFileGroup(id, group) {
-                this.addProgressItem(id, 'Processing...', 'processing');
+                this.updateFileItem(id, 'processing', 'Processing...');
 
                 const { main, overlay } = group;
 
                 if (!main) {
-                    this.updateProgressItem(id, 'No main file found', 'error');
+                    this.updateFileItem(id, 'error', 'No main file found');
                     return;
                 }
 
@@ -277,7 +572,8 @@
                                 };
 
                                 this.processedFiles.push(processedFile);
-                                this.updateProgressItem(id, 'Image processed successfully', 'success');
+                                this.updateFileItem(id, 'success', 'Image processed successfully', processedFile);
+                                this.updateDownloadButtonState();
                                 resolve();
                             }, 'image/jpeg', 0.9);
                         }
@@ -406,7 +702,8 @@
                             };
 
                             this.processedFiles.push(processedFile);
-                            this.updateProgressItem(id, 'Video processed successfully', 'success');
+                            this.updateFileItem(id, 'success', 'Video processed successfully', processedFile);
+                            this.updateDownloadButtonState();
                             resolve();
                         };
 
@@ -532,92 +829,6 @@
                 });
             }
 
-            addProgressItem(id, message, status) {
-                const progressContainer = document.getElementById('progressContainer');
-                const item = document.createElement('div');
-                item.id = `progress-${id}`;
-                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
-                
-                const statusIcon = {
-                    processing: '⏳',
-                    success: '✅',
-                    error: '❌'
-                };
-
-                item.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <span class="text-xl">${statusIcon[status] || '⏳'}</span>
-                        <div>
-                            <p class="font-medium text-gray-900">${id}</p>
-                            <p class="text-sm text-gray-600">${message}</p>
-                        </div>
-                    </div>
-                `;
-
-                progressContainer.appendChild(item);
-            }
-
-            updateProgressItem(id, message, status) {
-                const item = document.getElementById(`progress-${id}`);
-                if (item) {
-                    const statusIcon = {
-                        processing: '⏳',
-                        success: '✅',
-                        error: '❌'
-                    };
-
-                    item.innerHTML = `
-                        <div class="flex items-center space-x-3">
-                            <span class="text-xl">${statusIcon[status] || '⏳'}</span>
-                            <div>
-                                <p class="font-medium text-gray-900">${id}</p>
-                                <p class="text-sm text-gray-600">${message}</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-
-            updateOverallProgress(processed, total) {
-                // This could be used to show an overall progress bar if needed
-                console.log(`Progress: ${processed}/${total} groups processed`);
-            }
-
-            displayResults() {
-                const resultsGrid = document.getElementById('resultsGrid');
-                resultsGrid.innerHTML = '';
-
-                this.processedFiles.forEach(file => {
-                    const resultItem = document.createElement('div');
-                    resultItem.className = 'bg-white rounded-lg shadow-md overflow-hidden fade-in';
-
-                    const previewElement = file.type === 'video' 
-                        ? `<video controls class="w-full h-48 object-cover">
-                             <source src="${URL.createObjectURL(file.blob)}" type="${file.blob.type}">
-                           </video>`
-                        : `<img src="${URL.createObjectURL(file.blob)}" alt="Processed ${file.id}" class="w-full h-48 object-cover">`;
-
-                    resultItem.innerHTML = `
-                        ${previewElement}
-                        <div class="p-4">
-                            <h4 class="font-semibold text-gray-900 mb-2">${file.id}</h4>
-                            <p class="text-sm text-gray-600 mb-2">
-                                Original: ${file.originalMain}
-                                ${file.hasOverlay ? ' + overlay' : ' (no overlay)'}
-                            </p>
-                            <button onclick="downloadFile('${file.id}')" 
-                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                                Download ${file.type === 'video' ? 'Video' : 'Image'}
-                            </button>
-                        </div>
-                    `;
-
-                    resultsGrid.appendChild(resultItem);
-                });
-
-                // Enable download all button
-                document.getElementById('downloadAllBtn').disabled = false;
-            }
 
             async downloadAllAsZip() {
                 const zip = new JSZip();
@@ -645,8 +856,9 @@
             }
 
             downloadFile(id) {
-                const file = this.processedFiles.find(f => f.id === id);
-                if (file) {
+                const fileItem = this.fileItems.get(id);
+                if (fileItem && fileItem.processedFile) {
+                    const file = fileItem.processedFile;
                     const url = URL.createObjectURL(file.blob);
                     const a = document.createElement('a');
                     a.href = url;
