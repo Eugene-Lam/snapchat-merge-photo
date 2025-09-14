@@ -8,22 +8,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         .drag-over {
-            @apply border-blue-500 bg-blue-50 scale-105;
-        }
-        
-        .drag-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(59, 130, 246, 0.1);
-            border: 3px dashed rgb(59, 130, 246);
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10;
+            border-color: rgb(59, 130, 246) !important;
+            background-color: rgb(239, 246, 255) !important;
+            transform: scale(1.02);
+            transition: all 0.2s ease;
         }
         
         .processing {
@@ -210,26 +198,53 @@
 
                 // Help accordion
                 helpToggle.addEventListener('click', this.toggleHelp.bind(this));
+
+                // Global drag and drop handlers to prevent browser default behavior
+                this.setupGlobalDragHandlers();
+            }
+
+            setupGlobalDragHandlers() {
+                // Prevent default drag behaviors on the entire document
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    document.addEventListener(eventName, this.preventDefaults.bind(this), false);
+                });
+
+                // Highlight drop zone when item is dragged over page
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    document.addEventListener(eventName, this.highlight.bind(this), false);
+                });
+
+                // Unhighlight drop zone when item leaves or is dropped
+                ['dragleave', 'drop'].forEach(eventName => {
+                    document.addEventListener(eventName, this.unhighlight.bind(this), false);
+                });
+            }
+
+            preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            highlight(e) {
+                const dropZone = document.getElementById('dropZone');
+                if (dropZone && !dropZone.classList.contains('drag-over')) {
+                    dropZone.classList.add('border-blue-300', 'bg-blue-25');
+                }
+            }
+
+            unhighlight(e) {
+                // Only unhighlight if we're not over the drop zone
+                const dropZone = document.getElementById('dropZone');
+                if (dropZone && !dropZone.contains(e.target) && !dropZone.contains(e.relatedTarget)) {
+                    dropZone.classList.remove('border-blue-300', 'bg-blue-25');
+                }
             }
 
             handleDragOver(e) {
                 e.preventDefault();
                 e.stopPropagation();
+                e.dataTransfer.dropEffect = 'copy';
                 e.currentTarget.classList.add('drag-over');
-                
-                // Add drag overlay effect
-                if (!document.getElementById('dragOverlay')) {
-                    const overlay = document.createElement('div');
-                    overlay.id = 'dragOverlay';
-                    overlay.className = 'drag-overlay';
-                    overlay.innerHTML = `
-                        <div class="text-center text-blue-600">
-                            <div class="text-4xl mb-2">📂</div>
-                            <p class="text-lg font-medium">Drop files here to process</p>
-                        </div>
-                    `;
-                    document.body.appendChild(overlay);
-                }
             }
 
             handleDragLeave(e) {
@@ -239,10 +254,6 @@
                 // Only remove drag styling if actually leaving the drop zone
                 if (!e.currentTarget.contains(e.relatedTarget)) {
                     e.currentTarget.classList.remove('drag-over');
-                    const overlay = document.getElementById('dragOverlay');
-                    if (overlay) {
-                        overlay.remove();
-                    }
                 }
             }
 
@@ -250,15 +261,11 @@
                 e.preventDefault();
                 e.stopPropagation();
                 e.currentTarget.classList.remove('drag-over');
-                
-                // Remove drag overlay
-                const overlay = document.getElementById('dragOverlay');
-                if (overlay) {
-                    overlay.remove();
-                }
 
                 const files = Array.from(e.dataTransfer.files);
-                this.processFiles(files);
+                if (files.length > 0) {
+                    this.processFiles(files);
+                }
             }
 
             handleFileSelect(e) {
