@@ -221,7 +221,7 @@
                         <h3 class="text-lg font-semibold text-gray-900">Your Files</h3>
                         <div id="processingIndicator" class="hidden flex items-center space-x-2 text-blue-600">
                             <div class="loading-spinner"></div>
-                            <span class="text-sm">Processing...</span>
+                            <span id="processingText" class="text-sm">Processing...</span>
                         </div>
                     </div>
                     <div class="flex items-center space-x-3">
@@ -262,6 +262,10 @@
                 this.files = [];
                 this.processedFiles = [];
                 this.fileItems = new Map(); // Track UI items for each file
+                this.processingQueue = []; // Queue for processing files
+                this.maxConcurrent = 1; // Maximum concurrent processing operations
+                this.activeProcessing = 0; // Currently active processing operations
+                this.objectUrls = new Set(); // Track object URLs for cleanup
                 this.initializeEventListeners();
             }
 
@@ -390,20 +394,35 @@
 
                 // Group files by ID and type
                 const fileGroups = this.groupFiles(files);
+                const totalGroups = Object.keys(fileGroups).length;
+                let completedGroups = 0;
                 
                 // Create UI items for each group immediately
                 for (const [id, group] of Object.entries(fileGroups)) {
                     this.createFileItem(id, group);
                 }
                 
-                // Process each group
-                for (const [id, group] of Object.entries(fileGroups)) {
+                // Update progress text
+                this.updateProgressText(completedGroups, totalGroups);
+                
+                // Add all groups to processing queue
+                const processingPromises = Object.entries(fileGroups).map(async ([id, group]) => {
                     try {
-                        await this.processFileGroup(id, group);
+                        await this.processFileGroupWithQueue(id, group);
+                        completedGroups++;
+                        this.updateProgressText(completedGroups, totalGroups);
                     } catch (error) {
-                        console.error(`Error processing group ${id}:`, error);
-                        this.updateFileItemStatus(id, 'error', 'Processing failed');
+                        completedGroups++;
+                        this.updateProgressText(completedGroups, totalGroups);
+                        throw error;
                     }
+                });
+                
+                // Wait for all processing to complete
+                try {
+                    await Promise.allSettled(processingPromises);
+                } catch (error) {
+                    console.error('Error during batch processing:', error);
                 }
 
                 // Hide processing indicator
@@ -411,6 +430,32 @@
                 
                 // Enable download all if there are successful files
                 this.updateDownloadAllButton();
+            }
+
+            updateProgressText(completed, total) {
+                const processingText = document.getElementById('processingText');
+                if (processingText) {
+                    processingText.textContent = `Processing... ${completed}/${total} files`;
+                }
+            }
+
+
+            async processFileGroupWithQueue(id, group) {
+                // Wait for available processing slot
+                while (this.activeProcessing >= this.maxConcurrent) {
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+                
+                this.activeProcessing++;
+                
+                try {
+                    await this.processFileGroup(id, group);
+                } catch (error) {
+                    console.error(`Error processing group ${id}:`, error);
+                    this.updateFileItemStatus(id, 'error', 'Processing failed');
+                } finally {
+                    this.activeProcessing--;
+                }
             }
 
             groupFiles(files) {
@@ -540,6 +585,11 @@
                 this.files = [];
                 this.processedFiles = [];
                 this.fileItems.clear();
+                this.processingQueue = [];
+                this.activeProcessing = 0;
+
+                // Clean up object URLs to prevent memory leaks
+                this.cleanupObjectUrls();
 
                 // Clear UI
                 document.getElementById('filesList').innerHTML = '';
@@ -550,6 +600,24 @@
                 
                 // Hide files section
                 this.hideFilesSection();
+            }
+
+            cleanupObjectUrls() {
+                // Revoke all tracked object URLs to free memory
+                this.objectUrls.forEach(url => {
+                    try {
+                        URL.revokeObjectURL(url);
+                    } catch (error) {
+                        console.warn('Error revoking object URL:', error);
+                    }
+                });
+                this.objectUrls.clear();
+            }
+
+            createObjectURL(file) {
+                const url = URL.createObjectURL(file);
+                this.objectUrls.add(url);
+                return url;
             }
 
             updateDownloadAllButton() {
@@ -588,53 +656,88 @@
                     const ctx = canvas.getContext('2d');
                     let imagesLoaded = 0;
                     const totalImages = overlayFile ? 2 : 1;
+                    let mainUrl, overlayUrl;
 
                     const mainImg = new Image();
                     const overlayImg = overlayFile ? new Image() : null;
 
+                    const cleanup = () => {
+                        // Clean up object URLs
+                        if (mainUrl) {
+                            URL.revokeObjectURL(mainUrl);
+                            this.objectUrls.delete(mainUrl);
+                        }
+                        if (overlayUrl) {
+                            URL.revokeObjectURL(overlayUrl);
+                            this.objectUrls.delete(overlayUrl);
+                        }
+                        // Clean up canvas
+                        canvas.width = 0;
+                        canvas.height = 0;
+                    };
+
                     const checkComplete = () => {
                         imagesLoaded++;
                         if (imagesLoaded === totalImages) {
-                            // Set canvas size to main image dimensions
-                            canvas.width = mainImg.width;
-                            canvas.height = mainImg.height;
+                            try {
+                                // Set canvas size to main image dimensions
+                                canvas.width = mainImg.width;
+                                canvas.height = mainImg.height;
 
-                            // Draw main image
-                            ctx.drawImage(mainImg, 0, 0);
+                                // Draw main image
+                                ctx.drawImage(mainImg, 0, 0);
 
-                            // Draw overlay if present
-                            if (overlayImg) {
-                                ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                                // Draw overlay if present
+                                if (overlayImg) {
+                                    ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                                }
+
+                                // Convert to blob
+                                canvas.toBlob((blob) => {
+                                    if (blob) {
+                                        const processedFile = {
+                                            id,
+                                            type: 'image',
+                                            blob,
+                                            filename: `${id}-merged.jpg`,
+                                            originalMain: mainFile.name,
+                                            hasOverlay: !!overlayFile
+                                        };
+
+                                        this.processedFiles.push(processedFile);
+                                        this.updateFileItemStatus(id, 'success', 'Image processed successfully', processedFile);
+                                        cleanup();
+                                        resolve();
+                                    } else {
+                                        cleanup();
+                                        reject(new Error('Failed to create image blob'));
+                                    }
+                                }, 'image/jpeg', 0.9);
+                            } catch (error) {
+                                cleanup();
+                                reject(error);
                             }
-
-                            // Convert to blob
-                            canvas.toBlob((blob) => {
-                                const processedFile = {
-                                    id,
-                                    type: 'image',
-                                    blob,
-                                    filename: `${id}-merged.jpg`,
-                                    originalMain: mainFile.name,
-                                    hasOverlay: !!overlayFile
-                                };
-
-                                this.processedFiles.push(processedFile);
-                                this.updateFileItemStatus(id, 'success', 'Image processed successfully', processedFile);
-                                resolve();
-                            }, 'image/jpeg', 0.9);
                         }
                     };
 
                     mainImg.onload = checkComplete;
-                    mainImg.onerror = () => reject(new Error('Failed to load main image'));
+                    mainImg.onerror = () => {
+                        cleanup();
+                        reject(new Error('Failed to load main image'));
+                    };
 
                     if (overlayImg) {
                         overlayImg.onload = checkComplete;
-                        overlayImg.onerror = () => reject(new Error('Failed to load overlay image'));
-                        overlayImg.src = URL.createObjectURL(overlayFile);
+                        overlayImg.onerror = () => {
+                            cleanup();
+                            reject(new Error('Failed to load overlay image'));
+                        };
+                        overlayUrl = this.createObjectURL(overlayFile);
+                        overlayImg.src = overlayUrl;
                     }
 
-                    mainImg.src = URL.createObjectURL(mainFile);
+                    mainUrl = this.createObjectURL(mainFile);
+                    mainImg.src = mainUrl;
                 });
             }
 
@@ -650,6 +753,39 @@
                     let mediaRecorder;
                     let recordedChunks = [];
                     let onTimeUpdate, onCanPlayThrough, onSeeked; // Event listener references for cleanup
+                    let mainUrl, overlayUrl;
+                    let animationId;
+
+                    const cleanup = () => {
+                        // Clean up object URLs
+                        if (mainUrl) {
+                            URL.revokeObjectURL(mainUrl);
+                            this.objectUrls.delete(mainUrl);
+                        }
+                        if (overlayUrl) {
+                            URL.revokeObjectURL(overlayUrl);
+                            this.objectUrls.delete(overlayUrl);
+                        }
+                        
+                        // Clean up video element
+                        video.pause();
+                        video.removeAttribute('src');
+                        video.load();
+                        
+                        // Clean up canvas
+                        canvas.width = 0;
+                        canvas.height = 0;
+                        
+                        // Cancel animation frame
+                        if (animationId) {
+                            cancelAnimationFrame(animationId);
+                        }
+                        
+                        // Clean up event listeners
+                        if (onTimeUpdate) video.removeEventListener('timeupdate', onTimeUpdate);
+                        if (onCanPlayThrough) video.removeEventListener('canplaythrough', onCanPlayThrough);
+                        if (onSeeked) video.removeEventListener('seeked', onSeeked);
+                    };
 
                     const processFrame = () => {
                         if (video.paused || video.ended) {
@@ -670,7 +806,7 @@
                             }
                         }
 
-                        requestAnimationFrame(processFrame);
+                        animationId = requestAnimationFrame(processFrame);
                     };
 
                     video.addEventListener('loadedmetadata', () => {
@@ -736,23 +872,29 @@
                         };
 
                         mediaRecorder.onstop = () => {
-                            // Use MP4 format for all videos
-                            const blobType = 'video/mp4';
-                            const fileExtension = 'mp4';
-                            
-                            const blob = new Blob(recordedChunks, { type: blobType });
-                            const processedFile = {
-                                id,
-                                type: 'video',
-                                blob,
-                                filename: `${id}-merged.${fileExtension}`,
-                                originalMain: mainFile.name,
-                                hasOverlay: !!overlayFile
-                            };
+                            try {
+                                // Use MP4 format for all videos
+                                const blobType = 'video/mp4';
+                                const fileExtension = 'mp4';
+                                
+                                const blob = new Blob(recordedChunks, { type: blobType });
+                                const processedFile = {
+                                    id,
+                                    type: 'video',
+                                    blob,
+                                    filename: `${id}-merged.${fileExtension}`,
+                                    originalMain: mainFile.name,
+                                    hasOverlay: !!overlayFile
+                                };
 
-                            this.processedFiles.push(processedFile);
-                            this.updateFileItemStatus(id, 'success', 'Video processed successfully', processedFile);
-                            resolve();
+                                this.processedFiles.push(processedFile);
+                                this.updateFileItemStatus(id, 'success', 'Video processed successfully', processedFile);
+                                cleanup();
+                                resolve();
+                            } catch (error) {
+                                cleanup();
+                                reject(error);
+                            }
                         };
 
                         // Load overlay if present
@@ -763,7 +905,12 @@
                         if (overlayFile) {
                             overlayImg = new Image();
                             overlayImg.onload = startRecordingWhenReady;
-                            overlayImg.src = URL.createObjectURL(overlayFile);
+                            overlayImg.onerror = () => {
+                                cleanup();
+                                reject(new Error('Failed to load overlay image'));
+                            };
+                            overlayUrl = this.createObjectURL(overlayFile);
+                            overlayImg.src = overlayUrl;
                         } else {
                             startRecordingWhenReady();
                         }
@@ -838,19 +985,16 @@
                         if (mediaRecorder && mediaRecorder.state === 'recording') {
                             mediaRecorder.stop();
                         }
-                        
-                        // Clean up event listeners
-                        if (onTimeUpdate) video.removeEventListener('timeupdate', onTimeUpdate);
-                        if (onCanPlayThrough) video.removeEventListener('canplaythrough', onCanPlayThrough);
-                        if (onSeeked) video.removeEventListener('seeked', onSeeked);
                     });
 
                     video.addEventListener('error', (e) => {
                         console.error('Video error:', e);
+                        cleanup();
                         reject(new Error('Failed to load video'));
                     });
 
-                    video.src = URL.createObjectURL(mainFile);
+                    mainUrl = this.createObjectURL(mainFile);
+                    video.src = mainUrl;
                 });
             }
 
