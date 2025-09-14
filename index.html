@@ -307,6 +307,7 @@
                     let overlayImg = null;
                     let mediaRecorder;
                     let recordedChunks = [];
+                    let onTimeUpdate, onCanPlayThrough; // Event listener references for cleanup
 
                     const processFrame = () => {
                         if (video.paused || video.ended) {
@@ -314,12 +315,13 @@
                         }
 
                         // Only process if video has actual content (not just black frames)
-                        if (video.readyState >= 2) { // HAVE_CURRENT_DATA
-                            // Clear canvas
-                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        if (video.readyState >= 2 && video.currentTime > 0) { // HAVE_CURRENT_DATA and time progressed
+                            // Clear canvas with black background to avoid artifacts
+                            ctx.fillStyle = '#000000';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
                             // Draw video frame preserving aspect ratio
-                            ctx.drawImage(video, 0, 0);
+                            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
                             // Draw overlay if present
                             if (overlayImg) {
@@ -421,18 +423,77 @@
                         }
 
                         function startRecording() {
-                            // Wait for video to actually start playing
-                            const onVideoPlaying = () => {
-                                // Remove the event listener to avoid multiple calls
-                                video.removeEventListener('playing', onVideoPlaying);
+                            let recordingStarted = false;
+                            
+                            // Function to check if frame has actual content (not black/empty)
+                            const hasFrameContent = () => {
+                                if (video.readyState < 2) return false;
                                 
-                                // Start recording after video is actually playing
-                                mediaRecorder.start();
-                                processFrame();
+                                // Create a small test canvas to sample the current frame
+                                const testCanvas = document.createElement('canvas');
+                                const testCtx = testCanvas.getContext('2d');
+                                testCanvas.width = 32;
+                                testCanvas.height = 32;
+                                
+                                try {
+                                    // Draw a small sample of the current video frame
+                                    testCtx.drawImage(video, 0, 0, 32, 32);
+                                    const imageData = testCtx.getImageData(0, 0, 32, 32);
+                                    const data = imageData.data;
+                                    
+                                    // Check if there's actual content (not all black/transparent)
+                                    let totalBrightness = 0;
+                                    for (let i = 0; i < data.length; i += 4) {
+                                        totalBrightness += data[i] + data[i + 1] + data[i + 2]; // R + G + B
+                                    }
+                                    
+                                    // If average brightness is above threshold, we have content
+                                    const avgBrightness = totalBrightness / (data.length / 4) / 3;
+                                    return avgBrightness > 10; // Threshold to detect non-black frames
+                                } catch (error) {
+                                    console.warn('Error checking frame content:', error);
+                                    return video.currentTime > 0.1; // Fallback: just wait for some time progress
+                                }
                             };
                             
-                            // Add event listener for when video starts playing
-                            video.addEventListener('playing', onVideoPlaying);
+                            // Function to start recording once we have actual content
+                            const startRecordingWithContent = () => {
+                                if (recordingStarted) return;
+                                
+                                if (hasFrameContent()) {
+                                    recordingStarted = true;
+                                    console.log(`Starting recording at ${video.currentTime}s`);
+                                    mediaRecorder.start();
+                                    processFrame();
+                                } else if (video.currentTime > 5) {
+                                    // Fallback: start recording after 5 seconds even if no content detected
+                                    console.warn('Starting recording after 5s timeout');
+                                    recordingStarted = true;
+                                    mediaRecorder.start();
+                                    processFrame();
+                                }
+                            };
+                            
+                            // Listen for timeupdate to check for actual content
+                            onTimeUpdate = () => {
+                                if (!recordingStarted && video.currentTime > 0) {
+                                    startRecordingWithContent();
+                                }
+                            };
+                            
+                            // Listen for when video can play through
+                            onCanPlayThrough = () => {
+                                video.removeEventListener('canplaythrough', onCanPlayThrough);
+                                // Small delay to ensure video has started properly
+                                setTimeout(() => {
+                                    if (!recordingStarted) {
+                                        startRecordingWithContent();
+                                    }
+                                }, 100);
+                            };
+                            
+                            video.addEventListener('timeupdate', onTimeUpdate);
+                            video.addEventListener('canplaythrough', onCanPlayThrough);
                             
                             // Start the video
                             video.play().catch(error => {
@@ -444,6 +505,9 @@
 
                     video.addEventListener('ended', () => {
                         mediaRecorder.stop();
+                        // Clean up event listeners
+                        video.removeEventListener('timeupdate', onTimeUpdate);
+                        video.removeEventListener('canplaythrough', onCanPlayThrough);
                     });
 
                     video.addEventListener('error', () => {
