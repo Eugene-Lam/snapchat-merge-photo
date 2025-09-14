@@ -299,6 +299,8 @@
             async processVideo(id, mainFile, overlayFile) {
                 return new Promise((resolve, reject) => {
                     const video = document.createElement('video');
+                    video.muted = true; // Prevent audio feedback during processing
+                    video.crossOrigin = 'anonymous'; // Enable audio capture
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
@@ -327,7 +329,31 @@
                         canvas.height = video.videoHeight;
 
                         // Set up MediaRecorder with fallback for MIME type support
-                        const stream = canvas.captureStream(30); // 30 FPS
+                        const canvasStream = canvas.captureStream(30); // 30 FPS
+                        
+                        // Create a combined stream with video from canvas and audio from original video
+                        const stream = new MediaStream();
+                        
+                        // Add video track from canvas
+                        canvasStream.getVideoTracks().forEach(track => {
+                            stream.addTrack(track);
+                        });
+                        
+                        // Add audio track from original video using Web Audio API
+                        try {
+                            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                            const source = audioContext.createMediaElementSource(video);
+                            const destination = audioContext.createMediaStreamDestination();
+                            source.connect(destination);
+                            
+                            // Add audio tracks from the destination
+                            destination.stream.getAudioTracks().forEach(track => {
+                                stream.addTrack(track);
+                            });
+                        } catch (error) {
+                            console.warn('Could not capture audio:', error);
+                            // Continue without audio if capture fails
+                        }
                         
                         // Try different MIME types in order of preference
                         const mimeTypes = [
