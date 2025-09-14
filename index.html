@@ -638,6 +638,13 @@
                     video.addEventListener('loadedmetadata', () => {
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
+                        
+                        console.log('Video metadata loaded:', {
+                            duration: video.duration,
+                            width: video.videoWidth,
+                            height: video.videoHeight,
+                            hasAudio: video.mozHasAudio || video.webkitAudioDecodedByteCount > 0 || Boolean(video.audioTracks && video.audioTracks.length)
+                        });
 
                         // Set up MediaRecorder with fallback for MIME type support
                         const canvasStream = canvas.captureStream(30); // 30 FPS
@@ -650,47 +657,59 @@
                             stream.addTrack(track);
                         });
                         
-                        // Add audio track from original video - improved method
+                        // Add audio track from original video using captureStream (more reliable)
                         let audioContext, audioSource, audioDestination;
                         try {
-                            // Create audio context with proper sample rate
-                            audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                                sampleRate: 44100
-                            });
+                            // First try the simpler captureStream method which is more reliable
+                            console.log('Attempting to capture video stream with audio...');
+                            const videoStream = video.captureStream ? video.captureStream() : video.mozCaptureStream();
+                            const audioTracks = videoStream.getAudioTracks();
                             
-                            // Resume audio context if suspended (required by some browsers)
-                            if (audioContext.state === 'suspended') {
-                                audioContext.resume().then(() => {
-                                    console.log('Audio context resumed');
-                                }).catch(err => {
-                                    console.warn('Failed to resume audio context:', err);
-                                });
-                            }
-                            
-                            // Create media element source and destination
-                            audioSource = audioContext.createMediaElementSource(video);
-                            audioDestination = audioContext.createMediaStreamDestination();
-                            
-                            // Connect source to destination for recording only (no speaker output during processing)
-                            audioSource.connect(audioDestination);
-                            // Don't connect to audioContext.destination to avoid playing sound during processing
-                            
-                            // Add audio tracks from the destination
-                            audioDestination.stream.getAudioTracks().forEach(track => {
-                                stream.addTrack(track);
-                            });
-                            
-                            console.log('Audio setup successful, context state:', audioContext.state);
-                        } catch (error) {
-                            console.warn('Could not capture audio:', error);
-                            // Try fallback method - directly capture from video element
-                            try {
-                                const videoStream = video.captureStream ? video.captureStream() : video.mozCaptureStream();
-                                videoStream.getAudioTracks().forEach(track => {
+                            if (audioTracks.length > 0) {
+                                console.log(`Found ${audioTracks.length} audio track(s) in video stream`);
+                                audioTracks.forEach(track => {
+                                    console.log('Adding audio track:', track.label, track.enabled, track.readyState);
                                     stream.addTrack(track);
                                 });
-                            } catch (fallbackError) {
-                                console.warn('Fallback audio capture also failed:', fallbackError);
+                            } else {
+                                console.warn('No audio tracks found in video stream, trying Web Audio API fallback');
+                                throw new Error('No audio tracks in captureStream');
+                            }
+                        } catch (error) {
+                            console.warn('captureStream failed, trying Web Audio API:', error);
+                            // Fallback to Web Audio API method
+                            try {
+                                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                                    sampleRate: 44100
+                                });
+                                
+                                // Resume audio context if suspended
+                                if (audioContext.state === 'suspended') {
+                                    audioContext.resume().catch(err => {
+                                        console.warn('Failed to resume audio context:', err);
+                                    });
+                                }
+                                
+                                audioSource = audioContext.createMediaElementSource(video);
+                                audioDestination = audioContext.createMediaStreamDestination();
+                                
+                                // Important: Create a gain node to maintain audio connection
+                                const gainNode = audioContext.createGain();
+                                gainNode.gain.value = 1.0; // Keep original volume for recording
+                                
+                                // Connect: source -> gain -> destination
+                                audioSource.connect(gainNode);
+                                gainNode.connect(audioDestination);
+                                
+                                // Add the audio tracks to our stream
+                                audioDestination.stream.getAudioTracks().forEach(track => {
+                                    stream.addTrack(track);
+                                });
+                                
+                                console.log('Web Audio API setup successful');
+                            } catch (webAudioError) {
+                                console.error('Both audio capture methods failed:', webAudioError);
+                                console.warn('Proceeding without audio');
                             }
                         }
                         
@@ -741,7 +760,7 @@
                         };
 
                         mediaRecorder.onstop = () => {
-                            // Clean up audio context
+                            // Clean up audio context if we used Web Audio API
                             try {
                                 if (audioContext) {
                                     if (audioSource) audioSource.disconnect();
@@ -838,14 +857,14 @@
                                 if (hasFrameContent()) {
                                     recordingStarted = true;
                                     console.log(`Starting recording at ${video.currentTime}s`);
-                                    // Use small timeslice for better audio continuity
-                                    mediaRecorder.start(100); // 100ms timeslice for smoother audio
+                                    // Start recording without timeslicing for better audio continuity
+                                    mediaRecorder.start();
                                     processFrame();
                                 } else if (video.currentTime > 1) {
                                     // Fallback: start recording after 1 second even if no content detected
                                     console.warn('Starting recording after 1s timeout');
                                     recordingStarted = true;
-                                    mediaRecorder.start(100); // 100ms timeslice for smoother audio
+                                    mediaRecorder.start();
                                     processFrame();
                                 }
                             };
