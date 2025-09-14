@@ -78,7 +78,7 @@
                     <p class="text-xl font-medium text-gray-700">Drop your Snapchat export files here</p>
                     <p class="text-gray-500 mt-2">Or click to select files</p>
                 </div>
-                <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden">
+                <input type="file" id="fileInput" multiple accept="image/*,video/mp4" class="hidden">
                 <button id="selectFilesBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
                     Select Files
                 </button>
@@ -366,14 +366,11 @@
                         
                         // MIME type selection
                         const mimeTypes = [
-                            'video/webm;codecs=vp9,opus',
-                            'video/webm;codecs=vp8,opus',
-                            'video/webm',
                             'video/mp4;codecs=h264,aac',
                             'video/mp4'
                         ];
                         
-                        let selectedMimeType = 'video/webm'; // fallback
+                        let selectedMimeType = 'video/mp4'; // fallback
                         for (const mimeType of mimeTypes) {
                             if (MediaRecorder.isTypeSupported(mimeType)) {
                                 selectedMimeType = mimeType;
@@ -397,10 +394,9 @@
                         };
 
                         mediaRecorder.onstop = () => {
-                            // Determine file extension and MIME type based on selected format
-                            const isMP4 = selectedMimeType.includes('mp4');
-                            const blobType = isMP4 ? 'video/mp4' : 'video/webm';
-                            const fileExtension = isMP4 ? 'mp4' : 'webm';
+                            // Use MP4 format for all videos
+                            const blobType = 'video/mp4';
+                            const fileExtension = 'mp4';
                             
                             const blob = new Blob(recordedChunks, { type: blobType });
                             const processedFile = {
