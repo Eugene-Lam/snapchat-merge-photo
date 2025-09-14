@@ -7,107 +7,257 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
-        .drag-over {
-            @apply border-blue-500 bg-blue-50;
+        /* Modern CSS Variables */
+        :root {
+            --primary-blue: #2563eb;
+            --primary-blue-hover: #1d4ed8;
+            --secondary-gray: #6b7280;
+            --secondary-gray-hover: #4b5563;
+            --success-green: #059669;
+            --error-red: #dc2626;
+            --border-radius: 0.75rem;
+            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        /* Button Styles */
+        .btn-primary {
+            @apply inline-flex items-center px-4 py-2 text-sm font-medium text-white rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2;
+            background-color: var(--primary-blue);
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-blue-hover);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        .btn-primary:disabled {
+            @apply bg-gray-400 cursor-not-allowed opacity-60;
+        }
+
+        .btn-secondary {
+            @apply inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500;
+            box-shadow: var(--shadow-sm);
+        }
+        .btn-secondary:hover:not(:disabled) {
+            @apply bg-gray-50 border-gray-400;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+        .btn-secondary:disabled {
+            @apply bg-gray-100 text-gray-400 cursor-not-allowed opacity-60;
+        }
+
+        /* Drop Zone */
+        .drop-zone {
+            position: relative;
+        }
+        .drop-zone.compact {
+            @apply p-4;
+        }
+        .drop-zone.compact #dropZoneIcon {
+            @apply text-2xl;
+        }
+        .drop-zone.compact #dropZoneTitle {
+            @apply text-sm;
+        }
+        .drop-zone.dragging #dragOverlay {
+            @apply opacity-100;
+        }
+
+        /* File Item Animations */
+        @keyframes slideInUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px) scale(0.95);
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0) scale(1);
+            }
         }
         
-        .processing {
-            animation: pulse 2s infinite;
+        .file-item-enter {
+            animation: slideInUp 0.4s ease-out;
         }
-        
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
         
         .fade-in {
-            animation: fadeIn 0.5s ease-out;
+            animation: fadeIn 0.3s ease-out;
         }
-        
-        .progress-bar {
-            transition: width 0.3s ease;
-        }
-        
+
+        /* Loading Spinner */
         .loading-spinner {
             animation: spin 1s linear infinite;
+            border: 2px solid #e5e7eb;
+            border-top-color: var(--primary-blue);
         }
         
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+
+        /* Status Icons */
+        .status-processing {
+            @apply text-blue-600;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-success {
+            @apply text-green-600;
+        }
+        
+        .status-error {
+            @apply text-red-600;
+        }
+
+        /* Media Preview */
+        .media-preview {
+            @apply rounded-lg overflow-hidden shadow-sm;
+        }
+        
+        .media-preview img,
+        .media-preview video {
+            @apply w-full h-full object-cover;
+        }
+
+        /* Hover Effects */
+        .hover-lift {
+            @apply transition-all duration-200;
+        }
+        .hover-lift:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Typography */
+        .text-gradient {
+            background: linear-gradient(135deg, var(--primary-blue), #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
     <header class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 py-6">
+        <div class="max-w-7xl mx-auto px-4 py-8">
             <div class="text-center">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Snapchat Media Merger</h1>
-                <p class="text-gray-600">Merge your exported Snapchat photos and videos with their overlay filters</p>
+                <h1 class="text-4xl font-bold text-gradient mb-3">Snapchat Media Merger</h1>
+                <p class="text-lg text-gray-600 max-w-2xl mx-auto">Merge your exported Snapchat photos and videos with their overlay filters for a seamless experience</p>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Instructions -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <h2 class="text-lg font-semibold text-blue-900 mb-3">How it works:</h2>
-            <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
-                <div>
-                    <h3 class="font-medium mb-2">1. File Naming Convention</h3>
-                    <ul class="space-y-1 ml-4">
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.jpg</code> - Base image</li>
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.mp4</code> - Base video</li>
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-overlay.png</code> - Filter overlay</li>
-                    </ul>
-                </div>
-                <div>
-                    <h3 class="font-medium mb-2">2. Drag & Drop</h3>
-                    <p>Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+        <!-- Help Button & Instructions Modal -->
+        <div class="mb-6">
+            <button id="helpBtn" class="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 transition-colors">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <span class="font-medium">How it works</span>
+            </button>
+        </div>
+
+        <!-- Instructions Modal -->
+        <div id="helpModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-900">How it works</h2>
+                        <button id="closeHelp" class="text-gray-400 hover:text-gray-600 transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6 text-sm">
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-3">1. File Naming Convention</h3>
+                            <ul class="space-y-2 text-gray-700">
+                                <li class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-xs">[id]-main.jpg</code>
+                                    <span>- Base image</span>
+                                </li>
+                                <li class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-xs">[id]-main.mp4</code>
+                                    <span>- Base video</span>
+                                </li>
+                                <li class="flex items-center space-x-2">
+                                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                    <code class="bg-gray-100 px-2 py-1 rounded text-xs">[id]-overlay.png</code>
+                                    <span>- Filter overlay</span>
+                                </li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-gray-900 mb-3">2. Drag & Drop</h3>
+                            <p class="text-gray-700 leading-relaxed">Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Drop Zone -->
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-8 transition-colors duration-200 hover:border-gray-400">
+        <div id="dropZone" class="drop-zone relative border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-8 transition-all duration-300 hover:border-gray-400 hover:bg-gray-50">
             <div class="space-y-4">
-                <div class="text-6xl text-gray-400">📁</div>
-                <div>
-                    <p class="text-xl font-medium text-gray-700">Drop your Snapchat export files here</p>
+                <div class="text-4xl text-gray-400 transition-all duration-300" id="dropZoneIcon">📁</div>
+                <div id="dropZoneContent">
+                    <p class="text-lg font-medium text-gray-700" id="dropZoneTitle">Drop your Snapchat export files here</p>
                     <p class="text-gray-500 mt-2">Or click to select files</p>
                 </div>
                 <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden">
-                <button id="selectFilesBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                <button id="selectFilesBtn" class="btn-primary">
                     Select Files
                 </button>
             </div>
-        </div>
-
-        <!-- Processing Status -->
-        <div id="processingSection" class="hidden mb-8">
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900">Processing Files</h3>
-                    <div class="loading-spinner w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                </div>
-                <div id="progressContainer" class="space-y-3">
-                    <!-- Progress items will be inserted here -->
+            
+            <!-- Drag Overlay -->
+            <div id="dragOverlay" class="absolute inset-0 bg-blue-500 bg-opacity-10 border-2 border-blue-500 rounded-xl flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-200">
+                <div class="text-center">
+                    <div class="text-4xl mb-2">⬇️</div>
+                    <p class="text-lg font-semibold text-blue-700">Drop files here</p>
                 </div>
             </div>
         </div>
 
-        <!-- Results Section -->
-        <div id="resultsSection" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-900">Processed Media</h3>
-                <button id="downloadAllBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    📦 Download All as ZIP
-                </button>
-            </div>
-            <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Results will be inserted here -->
+        <!-- Unified Files List -->
+        <div id="filesSection" class="hidden">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <!-- Header with controls -->
+                <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                    <h3 class="text-xl font-semibold text-gray-900">Files</h3>
+                    <div class="flex items-center space-x-3">
+                        <button id="clearAllBtn" class="btn-secondary" disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Clear All
+                        </button>
+                        <button id="downloadAllBtn" class="btn-primary" disabled>
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            Download All as ZIP
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Files list -->
+                <div id="filesList" class="divide-y divide-gray-200">
+                    <!-- File items will be inserted here -->
+                </div>
             </div>
         </div>
     </main>
@@ -125,6 +275,10 @@
                 const fileInput = document.getElementById('fileInput');
                 const selectFilesBtn = document.getElementById('selectFilesBtn');
                 const downloadAllBtn = document.getElementById('downloadAllBtn');
+                const clearAllBtn = document.getElementById('clearAllBtn');
+                const helpBtn = document.getElementById('helpBtn');
+                const closeHelp = document.getElementById('closeHelp');
+                const helpModal = document.getElementById('helpModal');
 
                 // Drag and drop events
                 dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
@@ -135,26 +289,55 @@
                 selectFilesBtn.addEventListener('click', () => fileInput.click());
                 fileInput.addEventListener('change', this.handleFileSelect.bind(this));
 
-                // Download all button
+                // Control buttons
                 downloadAllBtn.addEventListener('click', this.downloadAllAsZip.bind(this));
+                clearAllBtn.addEventListener('click', this.clearAll.bind(this));
+
+                // Help modal events
+                helpBtn.addEventListener('click', () => {
+                    helpModal.classList.remove('hidden');
+                });
+                closeHelp.addEventListener('click', () => {
+                    helpModal.classList.add('hidden');
+                });
+                helpModal.addEventListener('click', (e) => {
+                    if (e.target === helpModal) {
+                        helpModal.classList.add('hidden');
+                    }
+                });
             }
 
             handleDragOver(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.add('drag-over');
+                const dropZone = e.currentTarget;
+                const overlay = document.getElementById('dragOverlay');
+                dropZone.classList.add('dragging');
+                overlay.classList.remove('opacity-0');
+                overlay.classList.add('opacity-100');
             }
 
             handleDragLeave(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.remove('drag-over');
+                // Only remove drag effect if we're leaving the drop zone entirely
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                    const dropZone = e.currentTarget;
+                    const overlay = document.getElementById('dragOverlay');
+                    dropZone.classList.remove('dragging');
+                    overlay.classList.remove('opacity-100');
+                    overlay.classList.add('opacity-0');
+                }
             }
 
             handleDrop(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.remove('drag-over');
+                const dropZone = e.currentTarget;
+                const overlay = document.getElementById('dragOverlay');
+                dropZone.classList.remove('dragging');
+                overlay.classList.remove('opacity-100');
+                overlay.classList.add('opacity-0');
 
                 const files = Array.from(e.dataTransfer.files);
                 this.processFiles(files);
@@ -166,37 +349,32 @@
             }
 
             async processFiles(files) {
-                this.files = files;
-                this.processedFiles = [];
+                // Add new files to existing ones
+                this.files = [...this.files, ...files];
                 
-                // Show processing section
-                document.getElementById('processingSection').classList.remove('hidden');
-                document.getElementById('resultsSection').classList.add('hidden');
+                // Show files section and make drop zone compact
+                this.showFilesSection();
+                this.makeDropZoneCompact();
 
                 // Group files by ID and type
                 const fileGroups = this.groupFiles(files);
                 
-                // Process each group
-                const totalGroups = Object.keys(fileGroups).length;
-                let processedGroups = 0;
+                // Add file items to UI immediately
+                for (const [id, group] of Object.entries(fileGroups)) {
+                    this.addFileItem(id, group);
+                }
 
+                // Process each group
                 for (const [id, group] of Object.entries(fileGroups)) {
                     try {
                         await this.processFileGroup(id, group);
-                        processedGroups++;
-                        this.updateOverallProgress(processedGroups, totalGroups);
                     } catch (error) {
                         console.error(`Error processing group ${id}:`, error);
-                        this.addProgressItem(id, 'Error processing files', 'error');
+                        this.updateFileItem(id, 'Error processing files', 'error');
                     }
                 }
 
-                // Show results
-                setTimeout(() => {
-                    document.getElementById('processingSection').classList.add('hidden');
-                    document.getElementById('resultsSection').classList.remove('hidden');
-                    this.displayResults();
-                }, 1000);
+                this.updateControlButtons();
             }
 
             groupFiles(files) {
@@ -222,21 +400,23 @@
             }
 
             async processFileGroup(id, group) {
-                this.addProgressItem(id, 'Processing...', 'processing');
-
                 const { main, overlay } = group;
 
                 if (!main) {
-                    this.updateProgressItem(id, 'No main file found', 'error');
+                    this.updateFileItem(id, 'No main file found', 'error');
                     return;
                 }
 
                 const isVideo = main.type.startsWith('video/');
 
-                if (isVideo) {
-                    await this.processVideo(id, main, overlay);
-                } else {
-                    await this.processImage(id, main, overlay);
+                try {
+                    if (isVideo) {
+                        await this.processVideo(id, main, overlay);
+                    } else {
+                        await this.processImage(id, main, overlay);
+                    }
+                } catch (error) {
+                    this.updateFileItem(id, error.message || 'Processing failed', 'error');
                 }
             }
 
@@ -277,7 +457,7 @@
                                 };
 
                                 this.processedFiles.push(processedFile);
-                                this.updateProgressItem(id, 'Image processed successfully', 'success');
+                                this.updateFileItem(id, 'Image processed successfully', 'success', processedFile);
                                 resolve();
                             }, 'image/jpeg', 0.9);
                         }
@@ -413,7 +593,7 @@
                             };
 
                             this.processedFiles.push(processedFile);
-                            this.updateProgressItem(id, 'Video processed successfully', 'success');
+                            this.updateFileItem(id, 'Video processed successfully', 'success', processedFile);
                             resolve();
                         };
 
@@ -516,103 +696,182 @@
                 });
             }
 
-            addProgressItem(id, message, status) {
-                const progressContainer = document.getElementById('progressContainer');
+            addFileItem(id, group) {
+                const filesList = document.getElementById('filesList');
                 const item = document.createElement('div');
-                item.id = `progress-${id}`;
-                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+                item.id = `file-${id}`;
+                item.className = 'file-item p-4 hover:bg-gray-50 transition-colors file-item-enter';
                 
-                const statusIcon = {
-                    processing: '⏳',
-                    success: '✅',
-                    error: '❌'
-                };
-
+                const { main, overlay } = group;
+                const isVideo = main && main.type.startsWith('video/');
+                const fileType = isVideo ? 'Video' : 'Image';
+                
                 item.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <span class="text-xl">${statusIcon[status] || '⏳'}</span>
-                        <div>
-                            <p class="font-medium text-gray-900">${id}</p>
-                            <p class="text-sm text-gray-600">${message}</p>
+                    <div class="flex items-center space-x-4">
+                        <!-- Status Icon -->
+                        <div class="flex-shrink-0">
+                            <div class="w-6 h-6 rounded-full border-2 border-blue-600 flex items-center justify-center status-processing">
+                                <div class="loading-spinner w-4 h-4 rounded-full"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- File Info -->
+                        <div class="flex-grow min-w-0">
+                            <div class="flex items-center space-x-2">
+                                <h4 class="font-medium text-gray-900 truncate">${id}</h4>
+                                <span class="text-xs px-2 py-1 bg-gray-100 text-gray-600 rounded">${fileType}</span>
+                                ${overlay ? '<span class="text-xs px-2 py-1 bg-blue-100 text-blue-600 rounded">Has Overlay</span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-600 mt-1">Processing...</p>
+                            ${main ? `<p class="text-xs text-gray-500 mt-1">Source: ${main.name}</p>` : ''}
+                        </div>
+                        
+                        <!-- Preview Area -->
+                        <div class="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center">
+                            <div class="text-gray-400 text-sm">${fileType.charAt(0)}</div>
+                        </div>
+                        
+                        <!-- Actions -->
+                        <div class="flex-shrink-0">
+                            <button class="download-btn hidden btn-primary text-xs px-3 py-1" onclick="downloadFile('${id}')">
+                                Download
+                            </button>
                         </div>
                     </div>
                 `;
 
-                progressContainer.appendChild(item);
+                filesList.appendChild(item);
             }
 
-            updateProgressItem(id, message, status) {
-                const item = document.getElementById(`progress-${id}`);
-                if (item) {
-                    const statusIcon = {
-                        processing: '⏳',
-                        success: '✅',
-                        error: '❌'
-                    };
-
-                    item.innerHTML = `
-                        <div class="flex items-center space-x-3">
-                            <span class="text-xl">${statusIcon[status] || '⏳'}</span>
-                            <div>
-                                <p class="font-medium text-gray-900">${id}</p>
-                                <p class="text-sm text-gray-600">${message}</p>
-                            </div>
-                        </div>
-                    `;
+            updateFileItem(id, message, status, processedFile = null) {
+                const item = document.getElementById(`file-${id}`);
+                if (!item) return;
+                
+                const statusIcon = {
+                    processing: '<div class="loading-spinner w-4 h-4 rounded-full"></div>',
+                    success: '<svg class="w-4 h-4 text-green-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>',
+                    error: '<svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>'
+                };
+                
+                const statusClasses = {
+                    processing: 'border-blue-600 status-processing',
+                    success: 'border-green-600 bg-green-50 status-success',
+                    error: 'border-red-600 bg-red-50 status-error'
+                };
+                
+                // Update status icon
+                const statusElement = item.querySelector('.flex-shrink-0 > div');
+                statusElement.className = `w-6 h-6 rounded-full border-2 flex items-center justify-center ${statusClasses[status]}`;
+                statusElement.innerHTML = statusIcon[status] || statusIcon.processing;
+                
+                // Update message
+                const messageElement = item.querySelector('.flex-grow p');
+                messageElement.textContent = message;
+                messageElement.className = `text-sm mt-1 ${
+                    status === 'success' ? 'text-green-600' : 
+                    status === 'error' ? 'text-red-600' : 'text-gray-600'
+                }`;
+                
+                // Update preview and show download button if successful
+                if (status === 'success' && processedFile) {
+                    const previewElement = item.querySelector('.w-16.h-16');
+                    const downloadBtn = item.querySelector('.download-btn');
+                    
+                    if (processedFile.type === 'video') {
+                        previewElement.innerHTML = `
+                            <video class="w-16 h-16 rounded-lg object-cover" muted>
+                                <source src="${URL.createObjectURL(processedFile.blob)}" type="${processedFile.blob.type}">
+                            </video>
+                        `;
+                    } else {
+                        previewElement.innerHTML = `
+                            <img src="${URL.createObjectURL(processedFile.blob)}" 
+                                 class="w-16 h-16 rounded-lg object-cover" 
+                                 alt="Processed ${id}">
+                        `;
+                    }
+                    
+                    downloadBtn.classList.remove('hidden');
                 }
             }
 
-            updateOverallProgress(processed, total) {
-                // This could be used to show an overall progress bar if needed
-                console.log(`Progress: ${processed}/${total} groups processed`);
+            showFilesSection() {
+                const filesSection = document.getElementById('filesSection');
+                if (filesSection.classList.contains('hidden')) {
+                    filesSection.classList.remove('hidden');
+                    filesSection.classList.add('fade-in');
+                }
             }
 
-            displayResults() {
-                const resultsGrid = document.getElementById('resultsGrid');
-                resultsGrid.innerHTML = '';
+            makeDropZoneCompact() {
+                const dropZone = document.getElementById('dropZone');
+                const dropZoneTitle = document.getElementById('dropZoneTitle');
+                
+                if (!dropZone.classList.contains('compact')) {
+                    dropZone.classList.add('compact');
+                    dropZoneTitle.textContent = 'Drop more files here or click to select';
+                }
+            }
 
-                this.processedFiles.forEach(file => {
-                    const resultItem = document.createElement('div');
-                    resultItem.className = 'bg-white rounded-lg shadow-md overflow-hidden fade-in';
+            updateControlButtons() {
+                const downloadAllBtn = document.getElementById('downloadAllBtn');
+                const clearAllBtn = document.getElementById('clearAllBtn');
+                const hasProcessedFiles = this.processedFiles.length > 0;
+                const hasAnyFiles = this.files.length > 0;
 
-                    const previewElement = file.type === 'video' 
-                        ? `<video controls class="w-full h-48 object-cover">
-                             <source src="${URL.createObjectURL(file.blob)}" type="${file.blob.type}">
-                           </video>`
-                        : `<img src="${URL.createObjectURL(file.blob)}" alt="Processed ${file.id}" class="w-full h-48 object-cover">`;
+                downloadAllBtn.disabled = !hasProcessedFiles;
+                clearAllBtn.disabled = !hasAnyFiles;
+            }
 
-                    resultItem.innerHTML = `
-                        ${previewElement}
-                        <div class="p-4">
-                            <h4 class="font-semibold text-gray-900 mb-2">${file.id}</h4>
-                            <p class="text-sm text-gray-600 mb-2">
-                                Original: ${file.originalMain}
-                                ${file.hasOverlay ? ' + overlay' : ' (no overlay)'}
-                            </p>
-                            <button onclick="downloadFile('${file.id}')" 
-                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                                Download ${file.type === 'video' ? 'Video' : 'Image'}
-                            </button>
-                        </div>
-                    `;
-
-                    resultsGrid.appendChild(resultItem);
-                });
-
-                // Enable download all button
-                document.getElementById('downloadAllBtn').disabled = false;
+            clearAll() {
+                // Clear data
+                this.files = [];
+                this.processedFiles = [];
+                
+                // Clear UI
+                const filesList = document.getElementById('filesList');
+                filesList.innerHTML = '';
+                
+                // Hide files section
+                const filesSection = document.getElementById('filesSection');
+                filesSection.classList.add('hidden');
+                
+                // Restore drop zone
+                const dropZone = document.getElementById('dropZone');
+                const dropZoneTitle = document.getElementById('dropZoneTitle');
+                dropZone.classList.remove('compact');
+                dropZoneTitle.textContent = 'Drop your Snapchat export files here';
+                
+                // Update buttons
+                this.updateControlButtons();
+                
+                // Clear file input
+                document.getElementById('fileInput').value = '';
             }
 
             async downloadAllAsZip() {
+                if (this.processedFiles.length === 0) {
+                    return;
+                }
+                
                 const zip = new JSZip();
+                const downloadBtn = document.getElementById('downloadAllBtn');
+                
+                // Show loading state
+                const originalText = downloadBtn.innerHTML;
+                downloadBtn.innerHTML = `
+                    <div class="loading-spinner w-4 h-4 mr-2 rounded-full"></div>
+                    Creating ZIP...
+                `;
+                downloadBtn.disabled = true;
 
-                // Add all processed files to zip
-                this.processedFiles.forEach(file => {
-                    zip.file(file.filename, file.blob);
-                });
-
-                // Generate and download zip
                 try {
+                    // Add all processed files to zip
+                    this.processedFiles.forEach(file => {
+                        zip.file(file.filename, file.blob);
+                    });
+
+                    // Generate and download zip
                     const zipBlob = await zip.generateAsync({ type: 'blob' });
                     const url = URL.createObjectURL(zipBlob);
                     const a = document.createElement('a');
@@ -625,6 +884,10 @@
                 } catch (error) {
                     console.error('Error creating ZIP:', error);
                     alert('Error creating ZIP file. Please try downloading files individually.');
+                } finally {
+                    // Restore button
+                    downloadBtn.innerHTML = originalText;
+                    downloadBtn.disabled = false;
                 }
             }
 
