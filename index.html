@@ -326,10 +326,28 @@
                         canvas.width = video.videoWidth;
                         canvas.height = video.videoHeight;
 
-                        // Set up MediaRecorder
+                        // Set up MediaRecorder with fallback for MIME type support
                         const stream = canvas.captureStream(30); // 30 FPS
+                        
+                        // Try different MIME types in order of preference
+                        const mimeTypes = [
+                            'video/mp4;codecs=h264',
+                            'video/mp4',
+                            'video/webm;codecs=vp9',
+                            'video/webm;codecs=vp8',
+                            'video/webm'
+                        ];
+                        
+                        let selectedMimeType = 'video/webm'; // fallback
+                        for (const mimeType of mimeTypes) {
+                            if (MediaRecorder.isTypeSupported(mimeType)) {
+                                selectedMimeType = mimeType;
+                                break;
+                            }
+                        }
+                        
                         mediaRecorder = new MediaRecorder(stream, {
-                            mimeType: 'video/webm;codecs=vp9'
+                            mimeType: selectedMimeType
                         });
 
                         mediaRecorder.ondataavailable = (event) => {
@@ -339,12 +357,17 @@
                         };
 
                         mediaRecorder.onstop = () => {
-                            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                            // Determine file extension and MIME type based on selected format
+                            const isMP4 = selectedMimeType.includes('mp4');
+                            const blobType = isMP4 ? 'video/mp4' : 'video/webm';
+                            const fileExtension = isMP4 ? 'mp4' : 'webm';
+                            
+                            const blob = new Blob(recordedChunks, { type: blobType });
                             const processedFile = {
                                 id,
                                 type: 'video',
                                 blob,
-                                filename: `${id}-merged.webm`,
+                                filename: `${id}-merged.${fileExtension}`,
                                 originalMain: mainFile.name,
                                 hasOverlay: !!overlayFile
                             };
@@ -445,7 +468,7 @@
 
                     const previewElement = file.type === 'video' 
                         ? `<video controls class="w-full h-48 object-cover">
-                             <source src="${URL.createObjectURL(file.blob)}" type="video/webm">
+                             <source src="${URL.createObjectURL(file.blob)}" type="${file.blob.type}">
                            </video>`
                         : `<img src="${URL.createObjectURL(file.blob)}" alt="Processed ${file.id}" class="w-full h-48 object-cover">`;
 
