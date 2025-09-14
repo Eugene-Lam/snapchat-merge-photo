@@ -307,18 +307,17 @@
                     let overlayImg = null;
                     let mediaRecorder;
                     let recordedChunks = [];
-                    let onTimeUpdate, onCanPlayThrough; // Event listener references for cleanup
+                    let onTimeUpdate, onCanPlayThrough, onSeeked; // Event listener references for cleanup
 
                     const processFrame = () => {
                         if (video.paused || video.ended) {
                             return;
                         }
 
-                        // Only process if video has actual content (not just black frames)
-                        if (video.readyState >= 2 && video.currentTime > 0) { // HAVE_CURRENT_DATA and time progressed
-                            // Clear canvas with black background to avoid artifacts
-                            ctx.fillStyle = '#000000';
-                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        // More lenient processing - start as soon as we have current data
+                        if (video.readyState >= 2) { // HAVE_CURRENT_DATA is sufficient
+                            // Clear canvas with transparent background for cleaner output
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
                             // Draw video frame preserving aspect ratio
                             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -429,30 +428,35 @@
                             const hasFrameContent = () => {
                                 if (video.readyState < 2) return false;
                                 
-                                // Create a small test canvas to sample the current frame
-                                const testCanvas = document.createElement('canvas');
-                                const testCtx = testCanvas.getContext('2d');
-                                testCanvas.width = 32;
-                                testCanvas.height = 32;
+                                // More lenient approach - just check if we have a stable current time
+                                if (video.currentTime >= 0.05) { // 50ms threshold - very early but avoids black frames
+                                    return true;
+                                }
                                 
+                                // Fallback: quick pixel sampling for very early detection
                                 try {
-                                    // Draw a small sample of the current video frame
-                                    testCtx.drawImage(video, 0, 0, 32, 32);
-                                    const imageData = testCtx.getImageData(0, 0, 32, 32);
+                                    const testCanvas = document.createElement('canvas');
+                                    const testCtx = testCanvas.getContext('2d');
+                                    testCanvas.width = 16; // Smaller for faster processing
+                                    testCanvas.height = 16;
+                                    
+                                    testCtx.drawImage(video, 0, 0, 16, 16);
+                                    const imageData = testCtx.getImageData(0, 0, 16, 16);
                                     const data = imageData.data;
                                     
-                                    // Check if there's actual content (not all black/transparent)
-                                    let totalBrightness = 0;
-                                    for (let i = 0; i < data.length; i += 4) {
-                                        totalBrightness += data[i] + data[i + 1] + data[i + 2]; // R + G + B
+                                    // Quick check - just sample a few pixels
+                                    let nonBlackPixels = 0;
+                                    for (let i = 0; i < data.length; i += 16) { // Sample every 4th pixel
+                                        const r = data[i], g = data[i + 1], b = data[i + 2];
+                                        if (r > 5 || g > 5 || b > 5) { // Very low threshold for early detection
+                                            nonBlackPixels++;
+                                        }
                                     }
                                     
-                                    // If average brightness is above threshold, we have content
-                                    const avgBrightness = totalBrightness / (data.length / 4) / 3;
-                                    return avgBrightness > 10; // Threshold to detect non-black frames
+                                    return nonBlackPixels > 2; // If we find more than 2 non-black pixels
                                 } catch (error) {
                                     console.warn('Error checking frame content:', error);
-                                    return video.currentTime > 0.1; // Fallback: just wait for some time progress
+                                    return video.currentTime > 0.02; // Fallback: 20ms delay
                                 }
                             };
                             
@@ -465,9 +469,9 @@
                                     console.log(`Starting recording at ${video.currentTime}s`);
                                     mediaRecorder.start();
                                     processFrame();
-                                } else if (video.currentTime > 5) {
-                                    // Fallback: start recording after 5 seconds even if no content detected
-                                    console.warn('Starting recording after 5s timeout');
+                                } else if (video.currentTime > 1) {
+                                    // Fallback: start recording after 1 second even if no content detected
+                                    console.warn('Starting recording after 1s timeout');
                                     recordingStarted = true;
                                     mediaRecorder.start();
                                     processFrame();
@@ -484,16 +488,25 @@
                             // Listen for when video can play through
                             onCanPlayThrough = () => {
                                 video.removeEventListener('canplaythrough', onCanPlayThrough);
-                                // Small delay to ensure video has started properly
-                                setTimeout(() => {
-                                    if (!recordingStarted) {
-                                        startRecordingWithContent();
-                                    }
-                                }, 100);
+                                // Immediate check - no delay needed with our improved detection
+                                if (!recordingStarted) {
+                                    startRecordingWithContent();
+                                }
+                            };
+                            
+                            // Also listen for seeked event for immediate response
+                            onSeeked = () => {
+                                if (!recordingStarted && video.currentTime >= 0) {
+                                    startRecordingWithContent();
+                                }
                             };
                             
                             video.addEventListener('timeupdate', onTimeUpdate);
                             video.addEventListener('canplaythrough', onCanPlayThrough);
+                            video.addEventListener('seeked', onSeeked);
+                            
+                            // Ensure video starts from the beginning
+                            video.currentTime = 0;
                             
                             // Start the video
                             video.play().catch(error => {
@@ -508,6 +521,7 @@
                         // Clean up event listeners
                         video.removeEventListener('timeupdate', onTimeUpdate);
                         video.removeEventListener('canplaythrough', onCanPlayThrough);
+                        video.removeEventListener('seeked', onSeeked);
                     });
 
                     video.addEventListener('error', () => {
