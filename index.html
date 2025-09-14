@@ -313,12 +313,18 @@
                             return;
                         }
 
-                        // Draw video frame
-                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        // Only process if video has actual content (not just black frames)
+                        if (video.readyState >= 2) { // HAVE_CURRENT_DATA
+                            // Clear canvas
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-                        // Draw overlay if present
-                        if (overlayImg) {
-                            ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                            // Draw video frame preserving aspect ratio
+                            ctx.drawImage(video, 0, 0);
+
+                            // Draw overlay if present
+                            if (overlayImg) {
+                                ctx.drawImage(overlayImg, 0, 0, canvas.width, canvas.height);
+                            }
                         }
 
                         requestAnimationFrame(processFrame);
@@ -415,9 +421,24 @@
                         }
 
                         function startRecording() {
-                            mediaRecorder.start();
-                            video.play();
-                            processFrame();
+                            // Wait for video to actually start playing
+                            const onVideoPlaying = () => {
+                                // Remove the event listener to avoid multiple calls
+                                video.removeEventListener('playing', onVideoPlaying);
+                                
+                                // Start recording after video is actually playing
+                                mediaRecorder.start();
+                                processFrame();
+                            };
+                            
+                            // Add event listener for when video starts playing
+                            video.addEventListener('playing', onVideoPlaying);
+                            
+                            // Start the video
+                            video.play().catch(error => {
+                                console.error('Error playing video:', error);
+                                reject(error);
+                            });
                         }
                     });
 
