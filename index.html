@@ -7,6 +7,17 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
+        /* Import modern font */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            @apply antialiased;
+        }
+        
         .drag-over {
             @apply border-blue-500 bg-blue-50;
         }
@@ -36,78 +47,192 @@
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
+        
+        /* Drop zone compact state */
+        .drop-zone-compact {
+            @apply p-4;
+        }
+        
+        .drop-zone-compact #dropZoneIcon {
+            @apply text-3xl;
+        }
+        
+        .drop-zone-compact #dropZoneMainText {
+            @apply text-base;
+        }
+        
+        .drop-zone-compact #dropZoneSubText {
+            @apply text-sm;
+        }
+        
+        .drop-zone-compact #dropZoneContent {
+            @apply space-y-2;
+        }
+        
+        /* Modern button styles */
+        .btn-primary {
+            @apply bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium px-6 py-3 rounded-xl shadow-lg hover:shadow-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 transform hover:-translate-y-0.5;
+        }
+        
+        .btn-secondary {
+            @apply bg-white text-gray-700 border border-gray-200 font-medium px-4 py-2 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all duration-200 shadow-sm hover:shadow;
+        }
+        
+        .btn-success {
+            @apply bg-gradient-to-r from-green-600 to-green-700 text-white font-medium px-4 py-2 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 shadow-sm hover:shadow;
+        }
+        
+        .btn-danger {
+            @apply bg-gradient-to-r from-gray-500 to-gray-600 text-white font-medium px-4 py-2 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-sm hover:shadow;
+        }
+        
+        /* Card styles */
+        .card {
+            @apply bg-white rounded-2xl shadow-lg border border-gray-100;
+        }
+        
+        .card-compact {
+            @apply bg-white rounded-xl shadow-sm border border-gray-100;
+        }
+        
+        /* Custom gradient backgrounds */
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* Enhanced transitions */
+        .smooth-transition {
+            @apply transition-all duration-300 ease-in-out;
+        }
+        
+        /* Modern text styles */
+        .text-heading {
+            @apply text-gray-900 font-semibold tracking-tight;
+        }
+        
+        .text-body {
+            @apply text-gray-600 leading-relaxed;
+        }
+        
+        .text-caption {
+            @apply text-gray-500 text-sm;
+        }
+        
+        /* Enhanced hover states */
+        .hover-lift {
+            @apply transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
     <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-        <div class="max-w-7xl mx-auto px-4 py-6">
+    <header class="gradient-bg shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-8">
             <div class="text-center">
-                <h1 class="text-3xl font-bold text-gray-900 mb-2">Snapchat Media Merger</h1>
-                <p class="text-gray-600">Merge your exported Snapchat photos and videos with their overlay filters</p>
+                <h1 class="text-4xl font-bold text-white mb-3 tracking-tight">Snapchat Media Merger</h1>
+                <p class="text-blue-100 text-lg">Merge your exported Snapchat photos and videos with their overlay filters</p>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 py-8">
-        <!-- Instructions -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <h2 class="text-lg font-semibold text-blue-900 mb-3">How it works:</h2>
-            <div class="grid md:grid-cols-2 gap-4 text-sm text-blue-800">
-                <div>
-                    <h3 class="font-medium mb-2">1. File Naming Convention</h3>
-                    <ul class="space-y-1 ml-4">
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.jpg</code> - Base image</li>
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-main.mp4</code> - Base video</li>
-                        <li>• <code class="bg-blue-100 px-2 py-1 rounded">[id]-overlay.png</code> - Filter overlay</li>
-                    </ul>
+        <!-- Collapsible Instructions -->
+        <div class="mb-8">
+            <button id="instructionsToggle" class="card-compact flex items-center justify-between w-full p-5 text-left hover-lift smooth-transition">
+                <div class="flex items-center space-x-4">
+                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span class="text-blue-600 text-lg">ℹ️</span>
+                    </div>
+                    <span class="text-lg font-semibold text-heading">How it works</span>
                 </div>
-                <div>
-                    <h3 class="font-medium mb-2">2. Drag & Drop</h3>
-                    <p>Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+                <svg id="instructionsChevron" class="w-5 h-5 text-gray-400 transform smooth-transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                </svg>
+            </button>
+            <div id="instructionsContent" class="hidden bg-blue-50 border-l border-r border-b border-gray-200 rounded-b-xl p-6 -mt-1">
+                <div class="grid md:grid-cols-2 gap-6">
+                    <div>
+                        <h3 class="font-semibold text-heading mb-3">1. File Naming Convention</h3>
+                        <ul class="space-y-2">
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-600">•</span>
+                                <code class="bg-white px-3 py-1 rounded-lg text-sm font-mono border">[id]-main.jpg</code>
+                                <span class="text-caption">Base image</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-600">•</span>
+                                <code class="bg-white px-3 py-1 rounded-lg text-sm font-mono border">[id]-main.mp4</code>
+                                <span class="text-caption">Base video</span>
+                            </li>
+                            <li class="flex items-center space-x-2">
+                                <span class="text-blue-600">•</span>
+                                <code class="bg-white px-3 py-1 rounded-lg text-sm font-mono border">[id]-overlay.png</code>
+                                <span class="text-caption">Filter overlay</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-heading mb-3">2. Drag & Drop</h3>
+                        <p class="text-body">Drop multiple files at once. The app will automatically pair and merge them based on matching IDs.</p>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Drop Zone -->
-        <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center mb-8 transition-colors duration-200 hover:border-gray-400">
-            <div class="space-y-4">
-                <div class="text-6xl text-gray-400">📁</div>
-                <div>
-                    <p class="text-xl font-medium text-gray-700">Drop your Snapchat export files here</p>
-                    <p class="text-gray-500 mt-2">Or click to select files</p>
+        <div id="dropZone" class="relative border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center mb-8 smooth-transition hover:border-blue-400 hover:bg-blue-50/30">
+            <div id="dropZoneContent" class="space-y-6 smooth-transition">
+                <div id="dropZoneIcon" class="text-6xl smooth-transition">📁</div>
+                <div id="dropZoneText">
+                    <p id="dropZoneMainText" class="text-xl font-semibold text-heading smooth-transition">Drop your Snapchat export files here</p>
+                    <p id="dropZoneSubText" class="text-body mt-2 smooth-transition">Or click to select files</p>
                 </div>
                 <input type="file" id="fileInput" multiple accept="image/*,video/*" class="hidden">
-                <button id="selectFilesBtn" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors">
+                <button id="selectFilesBtn" class="btn-primary">
                     Select Files
                 </button>
             </div>
-        </div>
-
-        <!-- Processing Status -->
-        <div id="processingSection" class="hidden mb-8">
-            <div class="bg-white rounded-lg shadow p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h3 class="text-lg font-semibold text-gray-900">Processing Files</h3>
-                    <div class="loading-spinner w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div>
-                </div>
-                <div id="progressContainer" class="space-y-3">
-                    <!-- Progress items will be inserted here -->
+            <!-- Drag overlay -->
+            <div id="dragOverlay" class="absolute inset-0 bg-gradient-to-br from-blue-100 to-blue-200 bg-opacity-95 border-blue-500 border-2 border-dashed rounded-2xl flex items-center justify-center opacity-0 pointer-events-none smooth-transition">
+                <div class="text-center">
+                    <div class="text-5xl mb-3">⬇️</div>
+                    <p class="text-xl font-bold text-blue-700">Drop files here</p>
+                    <p class="text-blue-600 mt-1">Release to process</p>
                 </div>
             </div>
         </div>
 
-        <!-- Results Section -->
-        <div id="resultsSection" class="hidden">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-semibold text-gray-900">Processed Media</h3>
-                <button id="downloadAllBtn" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed">
-                    📦 Download All as ZIP
-                </button>
-            </div>
-            <div id="resultsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Results will be inserted here -->
+        <!-- Unified Results List -->
+        <div id="unifiedListSection" class="hidden">
+            <div class="card">
+                <!-- Header with actions -->
+                <div class="flex justify-between items-center p-6 border-b border-gray-100">
+                    <div class="flex items-center space-x-4">
+                        <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                            <span class="text-blue-600 text-lg">📋</span>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold text-heading">Processing Queue</h3>
+                            <div class="flex items-center space-x-2 mt-1">
+                                <div id="processingIndicator" class="loading-spinner w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full hidden"></div>
+                                <span class="text-caption" id="queueStatus">Ready to process files</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-3">
+                        <button id="clearAllBtn" class="btn-danger" disabled>
+                            🗑️ Clear All
+                        </button>
+                        <button id="downloadAllBtn" class="btn-success" disabled>
+                            📦 Download All ZIP
+                        </button>
+                    </div>
+                </div>
+                <!-- Unified list container -->
+                <div id="unifiedListContainer" class="divide-y divide-gray-50">
+                    <!-- Processing and result items will be inserted here -->
+                </div>
             </div>
         </div>
     </main>
@@ -125,6 +250,11 @@
                 const fileInput = document.getElementById('fileInput');
                 const selectFilesBtn = document.getElementById('selectFilesBtn');
                 const downloadAllBtn = document.getElementById('downloadAllBtn');
+                const clearAllBtn = document.getElementById('clearAllBtn');
+                const instructionsToggle = document.getElementById('instructionsToggle');
+
+                // Instructions toggle
+                instructionsToggle.addEventListener('click', this.toggleInstructions.bind(this));
 
                 // Drag and drop events
                 dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
@@ -135,29 +265,81 @@
                 selectFilesBtn.addEventListener('click', () => fileInput.click());
                 fileInput.addEventListener('change', this.handleFileSelect.bind(this));
 
-                // Download all button
+                // Action buttons
                 downloadAllBtn.addEventListener('click', this.downloadAllAsZip.bind(this));
+                clearAllBtn.addEventListener('click', this.clearAll.bind(this));
+            }
+
+            toggleInstructions() {
+                const content = document.getElementById('instructionsContent');
+                const chevron = document.getElementById('instructionsChevron');
+                
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    chevron.classList.add('rotate-180');
+                } else {
+                    content.classList.add('hidden');
+                    chevron.classList.remove('rotate-180');
+                }
             }
 
             handleDragOver(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.add('drag-over');
+                const dragOverlay = document.getElementById('dragOverlay');
+                dragOverlay.classList.add('opacity-100');
+                dragOverlay.classList.remove('opacity-0');
             }
 
             handleDragLeave(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.remove('drag-over');
+                // Only hide overlay if leaving the dropzone entirely
+                if (!e.currentTarget.contains(e.relatedTarget)) {
+                    const dragOverlay = document.getElementById('dragOverlay');
+                    dragOverlay.classList.remove('opacity-100');
+                    dragOverlay.classList.add('opacity-0');
+                }
             }
 
             handleDrop(e) {
                 e.preventDefault();
                 e.stopPropagation();
-                e.currentTarget.classList.remove('drag-over');
+                
+                // Hide drag overlay
+                const dragOverlay = document.getElementById('dragOverlay');
+                dragOverlay.classList.remove('opacity-100');
+                dragOverlay.classList.add('opacity-0');
 
                 const files = Array.from(e.dataTransfer.files);
                 this.processFiles(files);
+            }
+
+            clearAll() {
+                this.files = [];
+                this.processedFiles = [];
+                
+                // Hide unified list section
+                document.getElementById('unifiedListSection').classList.add('hidden');
+                
+                // Clear the list
+                document.getElementById('unifiedListContainer').innerHTML = '';
+                
+                // Reset drop zone to full size
+                document.getElementById('dropZone').classList.remove('drop-zone-compact');
+                
+                // Reset buttons
+                document.getElementById('downloadAllBtn').disabled = true;
+                document.getElementById('clearAllBtn').disabled = true;
+                
+                // Hide processing indicator
+                document.getElementById('processingIndicator').classList.add('hidden');
+                
+                // Reset queue status
+                document.getElementById('queueStatus').textContent = 'Ready to process files';
+                
+                // Reset file input
+                document.getElementById('fileInput').value = '';
             }
 
             handleFileSelect(e) {
@@ -166,37 +348,40 @@
             }
 
             async processFiles(files) {
-                this.files = files;
-                this.processedFiles = [];
+                this.files = [...this.files, ...files]; // Append new files to existing ones
                 
-                // Show processing section
-                document.getElementById('processingSection').classList.remove('hidden');
-                document.getElementById('resultsSection').classList.add('hidden');
+                // Show unified list section and make drop zone compact
+                document.getElementById('unifiedListSection').classList.remove('hidden');
+                document.getElementById('dropZone').classList.add('drop-zone-compact');
+                document.getElementById('processingIndicator').classList.remove('hidden');
+                document.getElementById('clearAllBtn').disabled = false;
 
                 // Group files by ID and type
                 const fileGroups = this.groupFiles(files);
                 
-                // Process each group
-                const totalGroups = Object.keys(fileGroups).length;
-                let processedGroups = 0;
+                // Add items to unified list immediately with processing state
+                Object.keys(fileGroups).forEach(id => {
+                    this.addUnifiedListItem(id, fileGroups[id]);
+                });
 
+                // Process each group
                 for (const [id, group] of Object.entries(fileGroups)) {
                     try {
                         await this.processFileGroup(id, group);
-                        processedGroups++;
-                        this.updateOverallProgress(processedGroups, totalGroups);
                     } catch (error) {
                         console.error(`Error processing group ${id}:`, error);
-                        this.addProgressItem(id, 'Error processing files', 'error');
+                        this.updateUnifiedListItem(id, 'error', 'Error processing files');
                     }
                 }
 
-                // Show results
-                setTimeout(() => {
-                    document.getElementById('processingSection').classList.add('hidden');
-                    document.getElementById('resultsSection').classList.remove('hidden');
-                    this.displayResults();
-                }, 1000);
+                // Hide processing indicator
+                document.getElementById('processingIndicator').classList.add('hidden');
+                
+                // Enable download all if we have processed files
+                this.updateDownloadAllButton();
+                
+                // Update final queue status
+                this.updateQueueStatus();
             }
 
             groupFiles(files) {
@@ -222,12 +407,12 @@
             }
 
             async processFileGroup(id, group) {
-                this.addProgressItem(id, 'Processing...', 'processing');
+                this.updateUnifiedListItem(id, 'processing', 'Processing...');
 
                 const { main, overlay } = group;
 
                 if (!main) {
-                    this.updateProgressItem(id, 'No main file found', 'error');
+                    this.updateUnifiedListItem(id, 'error', 'No main file found');
                     return;
                 }
 
@@ -277,7 +462,7 @@
                                 };
 
                                 this.processedFiles.push(processedFile);
-                                this.updateProgressItem(id, 'Image processed successfully', 'success');
+                                this.updateUnifiedListItem(id, 'success', processedFile);
                                 resolve();
                             }, 'image/jpeg', 0.9);
                         }
@@ -413,7 +598,7 @@
                             };
 
                             this.processedFiles.push(processedFile);
-                            this.updateProgressItem(id, 'Video processed successfully', 'success');
+                            this.updateUnifiedListItem(id, 'success', processedFile);
                             resolve();
                         };
 
@@ -516,92 +701,120 @@
                 });
             }
 
-            addProgressItem(id, message, status) {
-                const progressContainer = document.getElementById('progressContainer');
-                const item = document.createElement('div');
-                item.id = `progress-${id}`;
-                item.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-lg';
+            addUnifiedListItem(id, group) {
+                const container = document.getElementById('unifiedListContainer');
+                const { main, overlay } = group;
                 
-                const statusIcon = {
-                    processing: '⏳',
-                    success: '✅',
-                    error: '❌'
-                };
-
+                // Create the list item
+                const item = document.createElement('div');
+                item.id = `unified-item-${id}`;
+                item.className = 'p-6 hover:bg-gray-50/50 smooth-transition';
+                
+                const fileTypeIcon = main && main.type.startsWith('video/') ? '🎬' : '🖼️';
+                const overlayText = overlay ? 'with overlay' : 'no overlay';
+                const fileSize = main ? (main.size / (1024 * 1024)).toFixed(1) + ' MB' : 'Unknown size';
+                
                 item.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <span class="text-xl">${statusIcon[status] || '⏳'}</span>
-                        <div>
-                            <p class="font-medium text-gray-900">${id}</p>
-                            <p class="text-sm text-gray-600">${message}</p>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4 flex-1">
+                            <div class="flex-shrink-0">
+                                <div id="status-icon-${id}" class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                                    <div class="loading-spinner w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                                </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center space-x-3 mb-2">
+                                    <span class="text-2xl">${fileTypeIcon}</span>
+                                    <div>
+                                        <h4 class="font-bold text-heading text-lg truncate">${id}</h4>
+                                        <p class="text-caption">${fileSize} • ${overlayText}</p>
+                                    </div>
+                                </div>
+                                <p class="text-body text-sm mb-1">${main ? main.name : 'Unknown file'}</p>
+                                <p id="status-text-${id}" class="text-sm text-blue-600 font-medium">Queued for processing...</p>
+                            </div>
+                        </div>
+                        <div id="preview-container-${id}" class="flex-shrink-0 ml-6 hidden">
+                            <!-- Preview and actions will be inserted here -->
                         </div>
                     </div>
                 `;
-
-                progressContainer.appendChild(item);
+                
+                container.appendChild(item);
+                
+                // Update queue status
+                this.updateQueueStatus();
             }
 
-            updateProgressItem(id, message, status) {
-                const item = document.getElementById(`progress-${id}`);
-                if (item) {
-                    const statusIcon = {
-                        processing: '⏳',
-                        success: '✅',
-                        error: '❌'
-                    };
-
-                    item.innerHTML = `
-                        <div class="flex items-center space-x-3">
-                            <span class="text-xl">${statusIcon[status] || '⏳'}</span>
-                            <div>
-                                <p class="font-medium text-gray-900">${id}</p>
-                                <p class="text-sm text-gray-600">${message}</p>
-                            </div>
-                        </div>
-                    `;
-                }
-            }
-
-            updateOverallProgress(processed, total) {
-                // This could be used to show an overall progress bar if needed
-                console.log(`Progress: ${processed}/${total} groups processed`);
-            }
-
-            displayResults() {
-                const resultsGrid = document.getElementById('resultsGrid');
-                resultsGrid.innerHTML = '';
-
-                this.processedFiles.forEach(file => {
-                    const resultItem = document.createElement('div');
-                    resultItem.className = 'bg-white rounded-lg shadow-md overflow-hidden fade-in';
-
+            updateUnifiedListItem(id, status, data) {
+                const statusIcon = document.getElementById(`status-icon-${id}`);
+                const statusText = document.getElementById(`status-text-${id}`);
+                const previewContainer = document.getElementById(`preview-container-${id}`);
+                
+                if (!statusIcon || !statusText || !previewContainer) return;
+                
+                if (status === 'processing') {
+                    statusIcon.className = 'w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center';
+                    statusIcon.innerHTML = '<div class="loading-spinner w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full"></div>';
+                    statusText.textContent = data;
+                    statusText.className = 'text-sm text-blue-600 font-medium';
+                } else if (status === 'success') {
+                    statusIcon.className = 'w-12 h-12 rounded-full bg-green-100 flex items-center justify-center';
+                    statusIcon.innerHTML = '<span class="text-green-600 text-2xl">✅</span>';
+                    statusText.textContent = 'Processing complete';
+                    statusText.className = 'text-sm text-green-600 font-medium';
+                    
+                    // Add preview and download button
+                    const file = data;
                     const previewElement = file.type === 'video' 
-                        ? `<video controls class="w-full h-48 object-cover">
+                        ? `<video class="w-20 h-20 object-cover rounded-xl border-2 border-gray-200" controls>
                              <source src="${URL.createObjectURL(file.blob)}" type="${file.blob.type}">
                            </video>`
-                        : `<img src="${URL.createObjectURL(file.blob)}" alt="Processed ${file.id}" class="w-full h-48 object-cover">`;
-
-                    resultItem.innerHTML = `
-                        ${previewElement}
-                        <div class="p-4">
-                            <h4 class="font-semibold text-gray-900 mb-2">${file.id}</h4>
-                            <p class="text-sm text-gray-600 mb-2">
-                                Original: ${file.originalMain}
-                                ${file.hasOverlay ? ' + overlay' : ' (no overlay)'}
-                            </p>
+                        : `<img src="${URL.createObjectURL(file.blob)}" alt="Preview" class="w-20 h-20 object-cover rounded-xl border-2 border-gray-200">`;
+                    
+                    previewContainer.innerHTML = `
+                        <div class="flex items-center space-x-4">
+                            ${previewElement}
                             <button onclick="downloadFile('${file.id}')" 
-                                    class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">
-                                Download ${file.type === 'video' ? 'Video' : 'Image'}
+                                    class="btn-secondary hover-lift">
+                                💾 Download
                             </button>
                         </div>
                     `;
-
-                    resultsGrid.appendChild(resultItem);
-                });
-
-                // Enable download all button
-                document.getElementById('downloadAllBtn').disabled = false;
+                    previewContainer.classList.remove('hidden');
+                    
+                    this.updateDownloadAllButton();
+                    this.updateQueueStatus();
+                } else if (status === 'error') {
+                    statusIcon.className = 'w-12 h-12 rounded-full bg-red-100 flex items-center justify-center';
+                    statusIcon.innerHTML = '<span class="text-red-600 text-2xl">❌</span>';
+                    statusText.textContent = data;
+                    statusText.className = 'text-sm text-red-600 font-medium';
+                    this.updateQueueStatus();
+                }
             }
+
+            updateDownloadAllButton() {
+                const downloadAllBtn = document.getElementById('downloadAllBtn');
+                downloadAllBtn.disabled = this.processedFiles.length === 0;
+            }
+
+            updateQueueStatus() {
+                const queueStatus = document.getElementById('queueStatus');
+                const totalItems = document.querySelectorAll('[id^="unified-item-"]').length;
+                const completedItems = this.processedFiles.length;
+                const errorItems = document.querySelectorAll('.text-red-600').length;
+                const processingItems = document.querySelectorAll('[id^="status-icon-"] .loading-spinner').length;
+                
+                if (totalItems === 0) {
+                    queueStatus.textContent = 'Ready to process files';
+                } else if (processingItems > 0) {
+                    queueStatus.textContent = `Processing ${processingItems} of ${totalItems} files...`;
+                } else {
+                    queueStatus.textContent = `${completedItems} completed, ${errorItems} failed`;
+                }
+            }
+
 
             async downloadAllAsZip() {
                 const zip = new JSZip();
@@ -665,32 +878,32 @@
             const blockContainer = document.createElement('div');
             blockContainer.className = 'min-h-screen bg-gray-50 flex items-center justify-center px-4';
             blockContainer.innerHTML = `
-                <div class="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-                    <div class="text-6xl mb-6">🚫</div>
-                    <h1 class="text-2xl font-bold text-gray-900 mb-4">Safari Not Supported</h1>
-                    <p class="text-gray-600 mb-6">
+                <div class="max-w-md w-full card p-10 text-center">
+                    <div class="text-6xl mb-8">🚫</div>
+                    <h1 class="text-3xl font-bold text-heading mb-6">Safari Not Supported</h1>
+                    <p class="text-body mb-8 leading-relaxed">
                         This application requires a modern browser with full WebRTC and MediaRecorder support. 
                         Safari has known issues with audio synchronization in video processing.
                     </p>
-                    <div class="space-y-3">
-                        <p class="text-sm font-medium text-gray-700">Recommended browsers:</p>
-                        <div class="flex justify-center space-x-4 text-sm">
-                            <div class="flex items-center space-x-1">
-                                <span>🌐</span>
-                                <span>Chrome</span>
+                    <div class="space-y-4">
+                        <p class="text-sm font-semibold text-heading">Recommended browsers:</p>
+                        <div class="flex justify-center space-x-6 text-sm">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-lg">🌐</span>
+                                <span class="font-medium">Chrome</span>
                             </div>
-                            <div class="flex items-center space-x-1">
-                                <span>🦊</span>
-                                <span>Firefox</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-lg">🦊</span>
+                                <span class="font-medium">Firefox</span>
                             </div>
-                            <div class="flex items-center space-x-1">
-                                <span>⚡</span>
-                                <span>Edge</span>
+                            <div class="flex items-center space-x-2">
+                                <span class="text-lg">⚡</span>
+                                <span class="font-medium">Edge</span>
                             </div>
                         </div>
                     </div>
-                    <div class="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                        <p class="text-sm text-yellow-800">
+                    <div class="mt-8 p-5 bg-yellow-50 border border-yellow-200 rounded-xl">
+                        <p class="text-sm text-yellow-800 leading-relaxed">
                             <strong>Note:</strong> Please use one of the recommended browsers above for the best experience.
                         </p>
                     </div>
